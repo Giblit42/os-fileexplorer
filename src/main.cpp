@@ -1,4 +1,9 @@
 #include <iostream>
+#include <string>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <vector>
+#include <stdlib.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
@@ -22,6 +27,7 @@ typedef struct AppData {
 void initialize(SDL_Renderer *renderer, AppData *data_ptr);
 void render(SDL_Renderer *renderer, AppData *data_ptr);
 void quit(AppData *data_ptr);
+void listDirectory(std::string dirname); // watch 04/22 recording on printing directory
 
 int main(int argc, char **argv)
 {
@@ -151,5 +157,24 @@ void quit(AppData *data_ptr)
     SDL_DestroyTexture(data_ptr->folder);
     SDL_DestroyTexture(data_ptr->phrase);
     TTF_CloseFont(data_ptr->font);
+}
+
+void listDirectory(std::string dirname)
+{
+   struct stat info;
+   int err = stat(dirname.c_str(), &info);
+   if (err == 0 && S_ISDIR(info.st_mode))
+   {
+      DIR* dir = opendir(dirname.c_str());
+      
+      struct dirent *entry;
+      while((entry = readdir(dir)) != NULL){
+           printf("%s\n", entry->d_name);
+      }
+      closedir(dir);
+   }
+   else{
+       fprintf(stderr, "Error: directory '%s' is not found\n", dirname.c_str());
+   }
 }
 
