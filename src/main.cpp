@@ -18,11 +18,28 @@ typedef struct AppData {
     SDL_Texture *folder;
     SDL_Texture *phrase;
     SDL_Texture *scroll;
+    SDL_Texture *exe;
+    SDL_Texture *image;
+    SDL_Texture *video;
+    SDL_Texture *code;
+    SDL_Texture *other;
+    SDL_Texture *up;
     SDL_Rect folder_rect;
     SDL_Rect phrase_rect;
     SDL_Rect scroll_rect;
+    SDL_Rect exe_rect;
+    SDL_Rect image_rect;
+    SDL_Rect video_rect;
+    SDL_Rect code_rect;
+    SDL_Rect other_rect;
+    SDL_Rect up_rect;
     bool folder_selected;
     bool phrase_selected;
+    bool exe_selected;
+    bool image_selected;
+    bool video_selected;
+    bool code_selected;
+    bool other_selected;
     SDL_Point offset;
 } AppData;
 
@@ -155,6 +172,45 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     data_ptr->scroll_rect.w = 120;
     data_ptr->scroll_rect.h = 600;
     
+    SDL_Surface *exe_surf = IMG_Load("resrc/exe.webp");
+    data_ptr->exe = SDL_CreateTextureFromSurface(renderer, exe_surf);
+    SDL_FreeSurface(exe_surf);
+    data_ptr->exe_rect.x = 200;
+    data_ptr->exe_rect.y = 10;
+    data_ptr->exe_rect.w = 180;
+    data_ptr->exe_rect.h = 180;
+    
+    SDL_Surface *image_surf = IMG_Load("resrc/image.webp");
+    data_ptr->image = SDL_CreateTextureFromSurface(renderer, image_surf);
+    SDL_FreeSurface(image_surf);
+    data_ptr->image_rect.x = 400;
+    data_ptr->image_rect.y = 10;
+    data_ptr->image_rect.w = 180;
+    data_ptr->image_rect.h = 180;
+    
+    SDL_Surface *video_surf = IMG_Load("resrc/video.webp");
+    data_ptr->video = SDL_CreateTextureFromSurface(renderer, video_surf);
+    SDL_FreeSurface(video_surf);
+    data_ptr->video_rect.x = 10;
+    data_ptr->video_rect.y = 200;
+    data_ptr->video_rect.w = 180;
+    data_ptr->video_rect.h = 180;
+    
+    SDL_Surface *code_surf = IMG_Load("resrc/code.webp");
+    data_ptr->code = SDL_CreateTextureFromSurface(renderer, code_surf);
+    SDL_FreeSurface(code_surf);
+    data_ptr->code_rect.x = 200;
+    data_ptr->code_rect.y = 200;
+    data_ptr->code_rect.w = 180;
+    data_ptr->code_rect.h = 180;
+    
+    SDL_Surface *other_surf = IMG_Load("resrc/other.webp");
+    data_ptr->other = SDL_CreateTextureFromSurface(renderer, other_surf);
+    SDL_FreeSurface(other_surf);
+    data_ptr->other_rect.x = 400;
+    data_ptr->other_rect.y = 200;
+    data_ptr->other_rect.w = 180;
+    data_ptr->other_rect.h = 180;
 }
 
 void render(SDL_Renderer *renderer, AppData *data_ptr)
@@ -168,7 +224,17 @@ void render(SDL_Renderer *renderer, AppData *data_ptr)
  
     SDL_RenderCopy(renderer, data_ptr->phrase, NULL, &(data_ptr->phrase_rect));
     
-    SDL_RenderCopy(renderer, data_ptr->scroll, NULL, &(data_ptr->scroll_rect));
+    //SDL_RenderCopy(renderer, data_ptr->scroll, NULL, &(data_ptr->scroll_rect));
+    
+    //SDL_RenderCopy(renderer, data_ptr->exe, NULL, &(data_ptr->exe_rect));
+    
+    //SDL_RenderCopy(renderer, data_ptr->image, NULL, &(data_ptr->image_rect));
+    
+    //SDL_RenderCopy(renderer, data_ptr->video, NULL, &(data_ptr->video_rect));
+    
+    //SDL_RenderCopy(renderer, data_ptr->code, NULL, &(data_ptr->code_rect));
+    
+    //SDL_RenderCopy(renderer, data_ptr->other, NULL, &(data_ptr->other_rect));
  
     // show rendered frame
     SDL_RenderPresent(renderer);
@@ -179,6 +245,11 @@ void quit(AppData *data_ptr)
     SDL_DestroyTexture(data_ptr->folder);
     SDL_DestroyTexture(data_ptr->phrase);
     SDL_DestroyTexture(data_ptr->scroll);
+    SDL_DestroyTexture(data_ptr->exe);
+    SDL_DestroyTexture(data_ptr->image);
+    SDL_DestroyTexture(data_ptr->video);
+    SDL_DestroyTexture(data_ptr->code);
+    SDL_DestroyTexture(data_ptr->other);
     TTF_CloseFont(data_ptr->font);
 }
 
@@ -222,7 +293,7 @@ void listDirectory(std::string dirname)
       }
    }
    else{
-       fprintf(stderr, "Error: directory '%s' is not found\n", dirname.c_str());
+       fprintf(stderr, "Error: directory '%s' is not found\n", dirname.c_str());       
    }
 }
 
