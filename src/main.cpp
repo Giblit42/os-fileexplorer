@@ -3,6 +3,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <vector>
+#include <algorithm>
 #include <stdlib.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -16,8 +17,10 @@ typedef struct AppData {
     TTF_Font *font;
     SDL_Texture *folder;
     SDL_Texture *phrase;
+    SDL_Texture *scroll;
     SDL_Rect folder_rect;
     SDL_Rect phrase_rect;
+    SDL_Rect scroll_rect;
     bool folder_selected;
     bool phrase_selected;
     SDL_Point offset;
@@ -77,6 +80,14 @@ int main(int argc, char **argv)
         		event.button.y <= data.phrase_rect.y + data.phrase_rect.h)
         		{
         			data.phrase_selected = true;
+        			// call list directories and pass in the getenv() pointer
+        			
+        			// for fork and exec should i check my list of directories and see if some are executable?
+        			// how about going back up a level in the directory?
+        				//delete everything after the most recent slash
+        			// scroll bars?
+        				//same thing we did in class draw it and then add a on button event to interact with it.
+        			
                     		data.offset.x = event.button.x - data.phrase_rect.x;
                     		data.offset.y = event.button.y - data.phrase_rect.y;
         		}
@@ -135,6 +146,15 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     data_ptr->phrase_rect.y = 10;
     SDL_QueryTexture(data_ptr->phrase, NULL, NULL, &(data_ptr->phrase_rect.w), &(data_ptr->phrase_rect.h));
     data_ptr->phrase_selected = false;
+    
+    SDL_Surface *scroll_surf = IMG_Load("resrc/scroll.png");
+    data_ptr->scroll = SDL_CreateTextureFromSurface(renderer, scroll_surf);
+    SDL_FreeSurface(scroll_surf);
+    data_ptr->scroll_rect.x = 730;
+    data_ptr->scroll_rect.y = 10;
+    data_ptr->scroll_rect.w = 120;
+    data_ptr->scroll_rect.h = 600;
+    
 }
 
 void render(SDL_Renderer *renderer, AppData *data_ptr)
@@ -147,6 +167,8 @@ void render(SDL_Renderer *renderer, AppData *data_ptr)
     SDL_RenderCopy(renderer, data_ptr->folder, NULL, &(data_ptr->folder_rect));
  
     SDL_RenderCopy(renderer, data_ptr->phrase, NULL, &(data_ptr->phrase_rect));
+    
+    SDL_RenderCopy(renderer, data_ptr->scroll, NULL, &(data_ptr->scroll_rect));
  
     // show rendered frame
     SDL_RenderPresent(renderer);
@@ -156,22 +178,48 @@ void quit(AppData *data_ptr)
 {
     SDL_DestroyTexture(data_ptr->folder);
     SDL_DestroyTexture(data_ptr->phrase);
+    SDL_DestroyTexture(data_ptr->scroll);
     TTF_CloseFont(data_ptr->font);
 }
 
 void listDirectory(std::string dirname)
 {
+   // 4/22 afternoon lecture start at 1:00:09
+   // for the recursion part 1:15:04
    struct stat info;
    int err = stat(dirname.c_str(), &info);
    if (err == 0 && S_ISDIR(info.st_mode))
    {
+      std::vector<std::string> file_list;
       DIR* dir = opendir(dirname.c_str());
       
       struct dirent *entry;
       while((entry = readdir(dir)) != NULL){
-           printf("%s\n", entry->d_name);
+           file_list.push_back(entry->d_name);
       }
       closedir(dir);
+      
+      std::sort(file_list.begin(), file_list.end());
+      
+      int i, file_err;
+      struct stat file_info;
+      for(i = 0; i < file_list.size(); i++)
+      {
+      	  std::string full_path = dirname + "/" + file_list[i];
+      	  file_err = stat(file_list[i].c_str(), &file_info);
+      	  if(file_err)
+      	  {
+      	  	fprintf(stderr, "Uh Oh! Should not get here\n");
+      	  }
+      	  else if(S_ISDIR(file_info.st_mode))
+      	  {
+      	  	printf("%s (directory)\n", file_list[i].c_str());
+      	  }
+      	  else
+      	  {
+      	  	printf("%s (%ld bytes)\n", file_list[i].c_str(), file_info.st_size);
+      	  }
+      }
    }
    else{
        fprintf(stderr, "Error: directory '%s' is not found\n", dirname.c_str());
