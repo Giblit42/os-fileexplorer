@@ -33,7 +33,7 @@ typedef struct AppData {
     SDL_Texture *other;
     SDL_Texture *up;
     SDL_Texture *down;
-    SDL_Texture *recursion;
+    SDL_Texture *recur;
     SDL_Rect folder_rect;
     SDL_Rect phrase_rect;
     SDL_Rect up_rect;
@@ -43,7 +43,7 @@ typedef struct AppData {
     SDL_Rect video_rect;
     SDL_Rect code_rect;
     SDL_Rect other_rect;
-    SDL_Rect recursion_rect;
+    SDL_Rect recur_rect;
     bool folder_selected;
     bool phrase_selected;
     bool exe_selected;
@@ -53,7 +53,7 @@ typedef struct AppData {
     bool other_selected;
     bool up_selected;
     bool down_selected;
-    bool recursion_selected;
+    bool recur_selected;
     SDL_Point offset;
     std::vector<FileEntry*> file_list;
 } AppData;
@@ -93,26 +93,7 @@ int main(int argc, char **argv)
         switch(event.type)
         {
         	case SDL_MOUSEMOTION:
-        		if(data.folder_selected)
-        		{
-        			data.folder_rect.x = event.motion.x;
-        			data.folder_rect.y = event.motion.y;
-        		}
-        		else if(data.phrase_selected)
-        		{
-        			data.phrase_rect.x = event.motion.x;
-        			data.phrase_rect.y = event.motion.y;
-        		}
-        		else if(data.up_selected)
-        		{
-        			data.phrase_rect.y = event.motion.y;
-        			data.folder_rect.y = event.motion.y;
-        		}
-        		else if(data.down_selected)
-        		{
-        			data.phrase_rect.y = event.motion.y;
-        			data.folder_rect.y = event.motion.y;
-        		}
+        		
         		
         		break;
         	case SDL_MOUSEBUTTONDOWN:
@@ -243,14 +224,16 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     data_ptr->down_rect.h = 100;
     data_ptr->down_selected = false;
     
-    SDL_Surface *recursion_surf = IMG_Load("resrc/Recursion.jpeg");
-    data_ptr->recursion = SDL_CreateTextureFromSurface(renderer, recursion_surf);
-    SDL_FreeSurface(recursion_surf);
-    data_ptr->recursion_rect.x = 10;
-    data_ptr->recursion_rect.y = 500;
-    data_ptr->recursion_rect.w = 100;
-    data_ptr->recursion_rect.h = 100;
-    data_ptr->recursion_selected = false;
+    SDL_Surface *recur_surf = IMG_Load("resrc/Recursion.jpeg");
+    data_ptr->recur = SDL_CreateTextureFromSurface(renderer, recur_surf);
+    SDL_FreeSurface(recur_surf);
+    data_ptr->recur_rect.x = 450;
+    data_ptr->recur_rect.y = 500;
+    data_ptr->recur_rect.w = 50;
+    data_ptr->recur_rect.h = 50;
+    data_ptr->recur_selected = false;
+    
+    
     
     
     SDL_RenderCopy(renderer, data_ptr->phrase, NULL, &(data_ptr->phrase_rect));
@@ -277,6 +260,8 @@ void render(SDL_Renderer *renderer, AppData *data_ptr)
     SDL_RenderCopy(renderer, data_ptr->up, NULL, &(data_ptr->up_rect));
     
     SDL_RenderCopy(renderer, data_ptr->down, NULL, &(data_ptr->down_rect));
+    
+    SDL_RenderCopy(renderer, data_ptr->recur, NULL, &(data_ptr->recur_rect));
     
     SDL_RenderCopy(renderer, data_ptr->phrase, NULL, &(data_ptr->phrase_rect));
     for(int i = 0; i < data_ptr->file_list.size(); i++){
@@ -309,6 +294,7 @@ void quit(AppData *data_ptr)
     SDL_DestroyTexture(data_ptr->other);
     SDL_DestroyTexture(data_ptr->up);
     SDL_DestroyTexture(data_ptr->down);
+    SDL_DestroyTexture(data_ptr->recur);
     TTF_CloseFont(data_ptr->font);
 }
 
