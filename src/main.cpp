@@ -33,6 +33,7 @@ typedef struct AppData {
     SDL_Texture *other;
     SDL_Texture *up;
     SDL_Texture *down;
+    SDL_Texture *recursion;
     SDL_Rect folder_rect;
     SDL_Rect phrase_rect;
     SDL_Rect up_rect;
@@ -42,6 +43,7 @@ typedef struct AppData {
     SDL_Rect video_rect;
     SDL_Rect code_rect;
     SDL_Rect other_rect;
+    SDL_Rect recursion_rect;
     bool folder_selected;
     bool phrase_selected;
     bool exe_selected;
@@ -51,6 +53,7 @@ typedef struct AppData {
     bool other_selected;
     bool up_selected;
     bool down_selected;
+    bool recursion_selected;
     SDL_Point offset;
     std::vector<FileEntry*> file_list;
 } AppData;
@@ -239,6 +242,16 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     data_ptr->down_rect.w = 100;
     data_ptr->down_rect.h = 100;
     data_ptr->down_selected = false;
+    
+    SDL_Surface *recursion_surf = IMG_Load("resrc/Recursion.jpeg");
+    data_ptr->recursion = SDL_CreateTextureFromSurface(renderer, recursion_surf);
+    SDL_FreeSurface(recursion_surf);
+    data_ptr->recursion_rect.x = 10;
+    data_ptr->recursion_rect.y = 500;
+    data_ptr->recursion_rect.w = 100;
+    data_ptr->recursion_rect.h = 100;
+    data_ptr->recursion_selected = false;
+    
     
     SDL_RenderCopy(renderer, data_ptr->phrase, NULL, &(data_ptr->phrase_rect));
     for(int i = 0; i < data_ptr->file_list.size(); i++){
