@@ -34,6 +34,7 @@ typedef struct AppData {
     SDL_Texture *up;
     SDL_Texture *down;
     SDL_Texture *recur;
+    SDL_Texture *back;
     SDL_Rect folder_rect;
     SDL_Rect phrase_rect;
     SDL_Rect up_rect;
@@ -44,6 +45,7 @@ typedef struct AppData {
     SDL_Rect code_rect;
     SDL_Rect other_rect;
     SDL_Rect recur_rect;
+    SDL_Rect back_rect;
     bool folder_selected;
     bool phrase_selected;
     bool exe_selected;
@@ -54,6 +56,7 @@ typedef struct AppData {
     bool up_selected;
     bool down_selected;
     bool recur_selected;
+    bool back_selected;
     SDL_Point offset;
     std::vector<FileEntry*> file_list;
 } AppData;
@@ -120,6 +123,25 @@ int main(int argc, char **argv)
                         		data.file_list.at(i)->namePos.y -=50;
                     		}
         		}
+        		else if(event.button.button == SDL_BUTTON_LEFT && 
+        		event.button.x >= data.folder_rect.x &&
+        		event.button.y >= data.folder_rect.y)
+        		{
+        			//change to current directory
+        			// how do we change our current dirrectory?
+        			// populate home directory with the .. as our home directory
+        			// replacing string dirname 
+        			
+        			data.folder_selected = true;
+        		}
+        		else if(event.button.button == SDL_BUTTON_LEFT && 
+        		event.button.x >= data.back_rect.x &&
+        		event.button.y >= data.back_rect.y)
+        		{
+        			//move back one directory or level
+        			// delete everything after most recent /
+        			data.back_selected = true;
+        		}
         		break;
         	case SDL_MOUSEBUTTONUP:
         		data.phrase_selected = false;
@@ -163,7 +185,7 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     data_ptr->phrase = SDL_CreateTextureFromSurface(renderer, phrase_surf);
     SDL_FreeSurface(phrase_surf);
     data_ptr->phrase_rect.x = 10;
-    data_ptr->phrase_rect.y = 10;
+    data_ptr->phrase_rect.y = 0;
     SDL_QueryTexture(data_ptr->phrase, NULL, NULL, &(data_ptr->phrase_rect.w), &(data_ptr->phrase_rect.h));
     data_ptr->phrase_selected = false;
     
@@ -238,6 +260,15 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     data_ptr->recur_rect.w = 30;
     data_ptr->recur_rect.h = 30;
     data_ptr->recur_selected = false;
+    
+    SDL_Surface *back_surf = IMG_Load("resrc/back.jwebp");
+    data_ptr->back = SDL_CreateTextureFromSurface(renderer, back_surf);
+    SDL_FreeSurface(back_surf);
+    data_ptr->back_rect.x = 450;
+    data_ptr->back_rect.y = 1;
+    data_ptr->back_rect.w = 30;
+    data_ptr->back_rect.h = 30;
+    data_ptr->back_selected = false;
     
     
     
@@ -314,6 +345,22 @@ void listDirectory(std::string dirname , AppData *data_ptr)
 {
    // 4/22 afternoon lecture start at 1:00:09
    // for the recursion part 1:15:04
+   
+   
+   // the way everyting is printing out he said is just fine we don't need to remove anymore dots
+   
+   // need to make .. our home directory rather than just printing out "Home Directory"
+   
+   // I shared a link in discord for the file permissions
+   
+   // for getting the file extensions he said we can use sup string and just look at the half after the . and see if it is a .txt or something
+   //then we can store the icons in an array or we can have a conditonal block of if/else for each extension type
+   
+   //for the .. button wich we still need when it is clicked on we will move up one level in the directory, this can be done by deleting everything after the most recent /
+   //then set it as are current dirrectory
+   
+   //we do something similar for changing directories  
+   
    struct stat info;
    int err = stat(dirname.c_str(), &info);
    if (err == 0 && S_ISDIR(info.st_mode))
@@ -345,14 +392,18 @@ void listDirectory(std::string dirname , AppData *data_ptr)
       for(i = 0; i < file_list.size(); i++)
       {
       	  std::string full_path = dirname + "/" + file_list[i];
-      	  file_err = stat(file_list[i].c_str(), &file_info);
+      	  file_err = stat(full_path.c_str(), &file_info);
       	  if(file_err)
       	  {
       	  	fprintf(stderr, "Uh Oh! Should not get here\n");
       	  }
       	  else if(S_ISDIR(file_info.st_mode))
       	  {
-      	  	printf("%s (directory)\n", file_list[i].c_str());
+      	  	printf("%s (directory)\n",file_list[i].c_str());
+      	  	if(file_list[i] != "." && file_list[i] != "..")
+      	  	{
+      	  	   //listDirectory(full_path , indent + 1, data_ptr);
+      	  	}
       	  }
       	  else
       	  {
