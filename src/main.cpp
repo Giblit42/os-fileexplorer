@@ -100,22 +100,22 @@ int main(int argc, char **argv)
         		
         		if(event.button.button == SDL_BUTTON_LEFT && 
         		event.button.x >= data.up_rect.x &&
-        		event.button.y > 5 && event.button.y < 105)
+        		event.button.y > 5 && event.button.y < 105 &&
+        		data.file_list.at(0)->namePos.y != 45)
         		{
         			data.up_selected = true;
         			data.folder_rect.y += 50;
-        			data.phrase_rect.y += 50;
         			for(int i = 0; i < data.file_list.size(); i++){
                         		data.file_list.at(i)->namePos.y +=50;
                     		}
         		}
         		else if(event.button.button == SDL_BUTTON_LEFT &&
         		event.button.x >= data.down_rect.x &&
-        		event.button.y > 500 && event.button.y < 600)
+        		event.button.y > 500 && event.button.y < 600 &&
+        		data.file_list.at(data.file_list.size()-1)->namePos.y >= HEIGHT-50)
         		{
         			data.down_selected = true;
         			data.folder_rect.y -= 50;
-        			data.phrase_rect.y -= 50;
         			for(int i = 0; i < data.file_list.size(); i++){
                         		data.file_list.at(i)->namePos.y -=50;
                     		}
@@ -154,8 +154,8 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     SDL_FreeSurface(img_surf);
     data_ptr->folder_rect.x = 10;
     data_ptr->folder_rect.y = 10;
-    data_ptr->folder_rect.w = 180;
-    data_ptr->folder_rect.h = 180;
+    data_ptr->folder_rect.w = 60;
+    data_ptr->folder_rect.h = 60;
     data_ptr->folder_selected = false;
 
     SDL_Color color = { 0, 0, 0 };
@@ -172,8 +172,8 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     SDL_FreeSurface(exe_surf);
     data_ptr->exe_rect.x = 200;
     data_ptr->exe_rect.y = 10;
-    data_ptr->exe_rect.w = 180;
-    data_ptr->exe_rect.h = 180;
+    data_ptr->exe_rect.w = 60;
+    data_ptr->exe_rect.h = 60;
     data_ptr->exe_selected = false;
     
     SDL_Surface *image_surf = IMG_Load("resrc/image.webp");
@@ -181,8 +181,8 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     SDL_FreeSurface(image_surf);
     data_ptr->image_rect.x = 400;
     data_ptr->image_rect.y = 10;
-    data_ptr->image_rect.w = 180;
-    data_ptr->image_rect.h = 180;
+    data_ptr->image_rect.w = 60;
+    data_ptr->image_rect.h = 60;
     data_ptr->image_selected = false;
     
     SDL_Surface *video_surf = IMG_Load("resrc/video.webp");
@@ -190,8 +190,8 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     SDL_FreeSurface(video_surf);
     data_ptr->video_rect.x = 10;
     data_ptr->video_rect.y = 200;
-    data_ptr->video_rect.w = 180;
-    data_ptr->video_rect.h = 180;
+    data_ptr->video_rect.w = 60;
+    data_ptr->video_rect.h = 60;
     data_ptr->video_selected = false;
     
     SDL_Surface *code_surf = IMG_Load("resrc/code.webp");
@@ -199,8 +199,8 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     SDL_FreeSurface(code_surf);
     data_ptr->code_rect.x = 200;
     data_ptr->code_rect.y = 200;
-    data_ptr->code_rect.w = 180;
-    data_ptr->code_rect.h = 180;
+    data_ptr->code_rect.w = 60;
+    data_ptr->code_rect.h = 60;
     data_ptr->code_selected = false;
     
     SDL_Surface *other_surf = IMG_Load("resrc/other.webp");
@@ -208,35 +208,35 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     SDL_FreeSurface(other_surf);
     data_ptr->other_rect.x = 400;
     data_ptr->other_rect.y = 200;
-    data_ptr->other_rect.w = 180;
-    data_ptr->other_rect.h = 180;
+    data_ptr->other_rect.w = 60;
+    data_ptr->other_rect.h = 60;
     data_ptr->other_selected = false;
     
     SDL_Surface *up_surf = IMG_Load("resrc/up.svg");
     data_ptr->up = SDL_CreateTextureFromSurface(renderer, up_surf);
     SDL_FreeSurface(up_surf);
-    data_ptr->up_rect.x = 700;
-    data_ptr->up_rect.y = 5;
-    data_ptr->up_rect.w = 100;
-    data_ptr->up_rect.h = 100;
+    data_ptr->up_rect.x = 740;
+    data_ptr->up_rect.y = 40;
+    data_ptr->up_rect.w = 60;
+    data_ptr->up_rect.h = 60;
     data_ptr->up_selected = false;
     
     SDL_Surface *down_surf = IMG_Load("resrc/down2.png");
     data_ptr->down = SDL_CreateTextureFromSurface(renderer, down_surf);
     SDL_FreeSurface(down_surf);
-    data_ptr->down_rect.x = 700;
-    data_ptr->down_rect.y = 500;
-    data_ptr->down_rect.w = 100;
-    data_ptr->down_rect.h = 100;
+    data_ptr->down_rect.x = 740;
+    data_ptr->down_rect.y = 540;
+    data_ptr->down_rect.w = 60;
+    data_ptr->down_rect.h = 60;
     data_ptr->down_selected = false;
     
     SDL_Surface *recur_surf = IMG_Load("resrc/Recursion.jpeg");
     data_ptr->recur = SDL_CreateTextureFromSurface(renderer, recur_surf);
     SDL_FreeSurface(recur_surf);
     data_ptr->recur_rect.x = 450;
-    data_ptr->recur_rect.y = 500;
-    data_ptr->recur_rect.w = 50;
-    data_ptr->recur_rect.h = 50;
+    data_ptr->recur_rect.y = 1;
+    data_ptr->recur_rect.w = 30;
+    data_ptr->recur_rect.h = 30;
     data_ptr->recur_selected = false;
     
     
@@ -263,18 +263,24 @@ void render(SDL_Renderer *renderer, AppData *data_ptr)
  
     //SDL_RenderCopy(renderer, data_ptr->phrase, NULL, &(data_ptr->phrase_rect));
     
-    SDL_RenderCopy(renderer, data_ptr->up, NULL, &(data_ptr->up_rect));
     
-    SDL_RenderCopy(renderer, data_ptr->down, NULL, &(data_ptr->down_rect));
-    
-    SDL_RenderCopy(renderer, data_ptr->recur, NULL, &(data_ptr->recur_rect));
-    
-    SDL_RenderCopy(renderer, data_ptr->phrase, NULL, &(data_ptr->phrase_rect));
     for(int i = 0; i < data_ptr->file_list.size(); i++){
         SDL_QueryTexture(data_ptr->file_list.at(i)->nameTexture, NULL, NULL, &(data_ptr->file_list.at(i)->namePos.w), &(data_ptr->file_list.at(i)->namePos.h));
         SDL_RenderCopy(renderer, data_ptr->file_list.at(i)->nameTexture, NULL, &(data_ptr->file_list.at(i)->namePos));
     }
     
+    SDL_Rect titalBar = {0, 0, WIDTH, 40};
+    SDL_SetRenderDrawColor(renderer, 76, 52, 235,255);
+    SDL_RenderFillRect(renderer, &titalBar);
+    
+    SDL_RenderCopy(renderer, data_ptr->phrase, NULL, &(data_ptr->phrase_rect));
+    
+    SDL_RenderCopy(renderer, data_ptr->up, NULL, &(data_ptr->up_rect));
+    
+    SDL_RenderCopy(renderer, data_ptr->down, NULL, &(data_ptr->down_rect));
+    
+    SDL_RenderCopy(renderer, data_ptr->recur, NULL, &(data_ptr->recur_rect));
+      
     //SDL_RenderCopy(renderer, data_ptr->exe, NULL, &(data_ptr->exe_rect));
     
     //SDL_RenderCopy(renderer, data_ptr->image, NULL, &(data_ptr->image_rect));
@@ -329,8 +335,8 @@ void listDirectory(std::string dirname , AppData *data_ptr)
       for(int k = 0; k < file_list.size(); k++){
             FileEntry *temp = new FileEntry();
             temp->fileName = file_list.at(k);
-            temp->namePos.x = 20;
-            temp->namePos.y = 20 + (k*24);
+            temp->namePos.x = 60;
+            temp->namePos.y = 45 + (k*40);
             data_ptr->file_list.push_back(temp);
       }
       
