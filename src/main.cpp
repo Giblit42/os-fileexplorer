@@ -103,16 +103,22 @@ int main(int argc, char **argv)
         		event.button.y > 5 && event.button.y < 105)
         		{
         			data.up_selected = true;
-        			data.folder_rect.y += 10;
-        			data.phrase_rect.y += 10;
+        			data.folder_rect.y += 50;
+        			data.phrase_rect.y += 50;
+        			for(int i = 0; i < data.file_list.size(); i++){
+                        		data.file_list.at(i)->namePos.y +=50;
+                    		}
         		}
         		else if(event.button.button == SDL_BUTTON_LEFT &&
         		event.button.x >= data.down_rect.x &&
         		event.button.y > 500 && event.button.y < 600)
         		{
         			data.down_selected = true;
-        			data.folder_rect.y -= 10;
-        			data.phrase_rect.y -= 10;
+        			data.folder_rect.y -= 50;
+        			data.phrase_rect.y -= 50;
+        			for(int i = 0; i < data.file_list.size(); i++){
+                        		data.file_list.at(i)->namePos.y -=50;
+                    		}
         		}
         		break;
         	case SDL_MOUSEBUTTONUP:
