@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include <stdlib.h>
+#include <filesystem>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
@@ -15,9 +16,14 @@
 typedef struct FileEntry{
     std::string fileName;
     SDL_Rect namePos;
-    //Some way of knowing what type it is
-    //file size
     SDL_Texture *nameTexture;
+
+    std::string fileSize;
+    SDL_Rect sizePos;
+    SDL_Texture *sizeTexture;
+
+    std::string filePic;
+    SDL_Rect picPos;
     bool text_selected;
     bool pic_selected;
 } FileEntry;
@@ -63,6 +69,8 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr);
 void render(SDL_Renderer *renderer, AppData *data_ptr);
 void quit(AppData *data_ptr);
 void listDirectory(std::string dirname, AppData *data_ptr); // watch 04/22 recording on printing directory
+std::string getFilePic(std::string ext);
+std::string stringOfSize(int size);
 
 int main(int argc, char **argv)
 {
@@ -104,10 +112,11 @@ int main(int argc, char **argv)
         		data.file_list.at(0)->namePos.y != 45)
         		{
         			data.up_selected = true;
-        			data.folder_rect.y += 50;
+        			//data.folder_rect.y += 40;
         			for(int i = 0; i < data.file_list.size(); i++){
-                        		data.file_list.at(i)->namePos.y +=50;
-                    		}
+                    	data.file_list.at(i)->namePos.y +=40;
+                        data.file_list.at(i)->sizePos.y +=40;
+                    }
         		}
         		else if(event.button.button == SDL_BUTTON_LEFT &&
         		event.button.x >= data.down_rect.x &&
@@ -115,10 +124,11 @@ int main(int argc, char **argv)
         		data.file_list.at(data.file_list.size()-1)->namePos.y >= HEIGHT-50)
         		{
         			data.down_selected = true;
-        			data.folder_rect.y -= 50;
+        			//data.folder_rect.y -= 45;
         			for(int i = 0; i < data.file_list.size(); i++){
-                        		data.file_list.at(i)->namePos.y -=50;
-                    		}
+                    	data.file_list.at(i)->namePos.y -=40;
+                        data.file_list.at(i)->sizePos.y -=40;
+                    }
         		}
         		break;
         	case SDL_MOUSEBUTTONUP:
@@ -163,7 +173,7 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     data_ptr->phrase = SDL_CreateTextureFromSurface(renderer, phrase_surf);
     SDL_FreeSurface(phrase_surf);
     data_ptr->phrase_rect.x = 10;
-    data_ptr->phrase_rect.y = 10;
+    data_ptr->phrase_rect.y = 0;
     SDL_QueryTexture(data_ptr->phrase, NULL, NULL, &(data_ptr->phrase_rect.w), &(data_ptr->phrase_rect.h));
     data_ptr->phrase_selected = false;
     
@@ -233,10 +243,10 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     SDL_Surface *recur_surf = IMG_Load("resrc/Recursion.jpeg");
     data_ptr->recur = SDL_CreateTextureFromSurface(renderer, recur_surf);
     SDL_FreeSurface(recur_surf);
-    data_ptr->recur_rect.x = 450;
+    data_ptr->recur_rect.x = 760;
     data_ptr->recur_rect.y = 1;
-    data_ptr->recur_rect.w = 30;
-    data_ptr->recur_rect.h = 30;
+    data_ptr->recur_rect.w = 40;
+    data_ptr->recur_rect.h = 40;
     data_ptr->recur_selected = false;
     
     
@@ -244,8 +254,14 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     
     SDL_RenderCopy(renderer, data_ptr->phrase, NULL, &(data_ptr->phrase_rect));
     for(int i = 0; i < data_ptr->file_list.size(); i++){
+        //Names of the files
         phrase_surf = TTF_RenderText_Solid(data_ptr->font, data_ptr->file_list.at(i)->fileName.c_str(), color);
         data_ptr->file_list.at(i)->nameTexture = SDL_CreateTextureFromSurface(renderer, phrase_surf);
+        SDL_FreeSurface(phrase_surf);
+
+        //size of the files
+        phrase_surf = TTF_RenderText_Solid(data_ptr->font, data_ptr->file_list.at(i)->fileSize.c_str(),color);
+        data_ptr->file_list.at(i)->sizeTexture = SDL_CreateTextureFromSurface(renderer, phrase_surf);
         SDL_FreeSurface(phrase_surf);
     }
     
@@ -259,21 +275,28 @@ void render(SDL_Renderer *renderer, AppData *data_ptr)
     SDL_RenderClear(renderer);
      
     // TODO: draw!
-    //SDL_RenderCopy(renderer, data_ptr->folder, NULL, &(data_ptr->folder_rect));
- 
-    //SDL_RenderCopy(renderer, data_ptr->phrase, NULL, &(data_ptr->phrase_rect));
-    
+
+    SDL_Rect seperator; 
     
     for(int i = 0; i < data_ptr->file_list.size(); i++){
         SDL_QueryTexture(data_ptr->file_list.at(i)->nameTexture, NULL, NULL, &(data_ptr->file_list.at(i)->namePos.w), &(data_ptr->file_list.at(i)->namePos.h));
         SDL_RenderCopy(renderer, data_ptr->file_list.at(i)->nameTexture, NULL, &(data_ptr->file_list.at(i)->namePos));
+
+        SDL_QueryTexture(data_ptr->file_list.at(i)->sizeTexture,NULL,NULL, &(data_ptr->file_list.at(i)->sizePos.w), &(data_ptr->file_list.at(i)->sizePos.h));
+        SDL_RenderCopy(renderer, data_ptr->file_list.at(i)->sizeTexture, NULL, &(data_ptr->file_list.at(i)->sizePos));
+
+        if(i < 13){
+            seperator = {0,72 + (i*40),WIDTH,1};
+            SDL_SetRenderDrawColor(renderer,120,120,120,255);
+            SDL_RenderFillRect(renderer,&seperator);
+        }
     }
     
-    SDL_Rect titalBar = {0, 0, WIDTH, 40};
+    SDL_Rect titleBar = {0, 0, WIDTH, 40};
     SDL_SetRenderDrawColor(renderer, 76, 52, 235,255);
-    SDL_RenderFillRect(renderer, &titalBar);
+    SDL_RenderFillRect(renderer, &titleBar);
     
-    SDL_RenderCopy(renderer, data_ptr->phrase, NULL, &(data_ptr->phrase_rect));
+    SDL_RenderCopy(renderer, data_ptr->phrase, NULL, &(data_ptr->phrase_rect)); //change the phrase!!!!
     
     SDL_RenderCopy(renderer, data_ptr->up, NULL, &(data_ptr->up_rect));
     
@@ -312,56 +335,95 @@ void quit(AppData *data_ptr)
 
 void listDirectory(std::string dirname , AppData *data_ptr)
 {
-   // 4/22 afternoon lecture start at 1:00:09
-   // for the recursion part 1:15:04
-   struct stat info;
-   int err = stat(dirname.c_str(), &info);
-   if (err == 0 && S_ISDIR(info.st_mode))
-   {
-      std::vector<std::string> file_list;
-      DIR* dir = opendir(dirname.c_str());
+    // 4/22 afternoon lecture start at 1:00:09
+    // for the recursion part 1:15:04
+    struct stat info;
+    int err = stat(dirname.c_str(), &info);
+    if (err == 0 && S_ISDIR(info.st_mode))
+    {
+        std::vector<std::string> file_list;
+        std::vector<std::string> fileType;
+        DIR* dir = opendir(dirname.c_str());
       
-      struct dirent *entry;
-      while((entry = readdir(dir)) != NULL){
-      	    if((std::string)entry->d_name != ".")
-      	    {
-              file_list.push_back(entry->d_name);
-           }
-      }
-      closedir(dir);
+        struct dirent *entry;
+        while((entry = readdir(dir)) != NULL){
+      	    if((std::string)entry->d_name != "."){
+                file_list.push_back(entry->d_name);
+            }
+        }
+        closedir(dir);
       
-      std::sort(file_list.begin(), file_list.end());
+        std::sort(file_list.begin(), file_list.end());
       
-      for(int k = 0; k < file_list.size(); k++){
+        int i, file_err;
+        struct stat file_info;
+        for(i = 0; i < file_list.size(); i++)
+        {
+      	    std::string full_path = dirname + "/" + file_list[i];
+      	    file_err = stat(full_path.c_str(), &file_info);
+      	    
             FileEntry *temp = new FileEntry();
-            temp->fileName = file_list.at(k);
+            temp->fileName = file_list.at(i);
             temp->namePos.x = 60;
-            temp->namePos.y = 45 + (k*40);
+            temp->namePos.y = 45 + (i*40);
+            temp->sizePos.x = 450;
+            temp->sizePos.y = 45 + (i*40);
+
+            if(S_ISDIR(file_info.st_mode)){
+      	  	    temp->filePic = "resrc/illustration-data-folder-icon.jpg";
+                temp->fileSize = " ";
+      	    }
+      	    else{
+                int fileSize = file_info.st_size;
+                temp->fileSize = stringOfSize(fileSize);
+
+                //get the file extension
+                int pos = full_path.find_last_of('.');
+                std::string extension = full_path.substr(pos);
+                temp->filePic = getFilePic(extension);
+      	    }
+
             data_ptr->file_list.push_back(temp);
-      }
-      
-      int i, file_err;
-      struct stat file_info;
-      for(i = 0; i < file_list.size(); i++)
-      {
-      	  std::string full_path = dirname + "/" + file_list[i];
-      	  file_err = stat(file_list[i].c_str(), &file_info);
-      	  if(file_err)
-      	  {
-      	  	fprintf(stderr, "Uh Oh! Should not get here\n");
-      	  }
-      	  else if(S_ISDIR(file_info.st_mode))
-      	  {
-      	  	printf("%s (directory)\n", file_list[i].c_str());
-      	  }
-      	  else
-      	  {
-      	  	printf("%s (%ld bytes)\n", file_list[i].c_str(), file_info.st_size);
-      	  }
-      }
-   }
-   else{
-       fprintf(stderr, "Error: directory '%s' is not found\n", dirname.c_str());       
-   }
+        }
+    }
+    else{
+        fprintf(stderr, "Error: directory '%s' is not found\n", dirname.c_str());       
+    }
+   
+}
+
+std::string getFilePic(std::string ext){
+    if(ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".tif" || ext == ".tiff" || ext == ".gif"){ //if the extension is a picture
+        return "resrc/image.webp";
+    }
+    else if(ext == ".mp4" || ext == ".mov" || ext == ".mkv" || ext == ".avi" || ext == "webm"){ //video
+        return "resrc/video.webp";
+    }
+    else if(ext == ".h" || ext == ".c" || ext == ".cpp" || ext == ".py" || ext == ".java" || ext == ".js"){ //code file
+        return "resrc/code.webp";
+    }
+    return "resrc/other.webp";//other file pic
+}
+
+std::string stringOfSize(int size){
+    if(size >= 1024 && size < 1048576){
+        double size2 = ((double)size / 1024.0)*10;
+        size = (int)size2;
+        //size2 = static_cast<double>(static_cast<int>(size2*10.))/10.;
+        return std::to_string(size/10) + "." + std::to_string(size%10) + " MiB";
+    }
+    else if(size >= 1048576 && size < 1073741824){
+        double size2 = ((double)size / 1048576.0)*10;
+        size = (int)size2;
+        //size2 = static_cast<double>(static_cast<int>(size2*10.0))/10.0;
+        return std::to_string(size/10) + "." + std::to_string(size%10) + " KiB";
+    }
+    else if(size >= 1073741824){
+        double size2 = (double)size / 1073741824.0;
+        size2 = static_cast<double>(static_cast<int>(size2*10.0))/10.0;
+        return std::to_string(size/10) + "." + std::to_string(size%10) + " GiB";
+    }
+    
+    return std::to_string(size) + " B";
 }
 
