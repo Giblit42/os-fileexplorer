@@ -15,6 +15,8 @@
 
 typedef struct FileEntry{
     std::string fileName;
+    std::string full_path;
+
     SDL_Rect namePos;
     SDL_Texture *nameTexture;
 
@@ -23,9 +25,10 @@ typedef struct FileEntry{
     SDL_Texture *sizeTexture;
 
     std::string filePic;
+    SDL_Texture *picTexture;
     SDL_Rect picPos;
-    bool text_selected;
-    bool pic_selected;
+
+    bool selected;
 } FileEntry;
 
 typedef struct AppData {
@@ -40,6 +43,10 @@ typedef struct AppData {
     SDL_Texture *up;
     SDL_Texture *down;
     SDL_Texture *recur;
+    SDL_Texture *size;
+    SDL_Texture *perm;
+    SDL_Rect perm_rect;
+    SDL_Rect size_rect;
     SDL_Rect folder_rect;
     SDL_Rect phrase_rect;
     SDL_Rect up_rect;
@@ -68,9 +75,10 @@ typedef struct AppData {
 void initialize(SDL_Renderer *renderer, AppData *data_ptr);
 void render(SDL_Renderer *renderer, AppData *data_ptr);
 void quit(AppData *data_ptr);
-void listDirectory(std::string dirname, AppData *data_ptr); // watch 04/22 recording on printing directory
+void listDirectory(std::string dirname, AppData *data_ptr, bool recursive, int indent, SDL_Renderer *renderer); // watch 04/22 recording on printing directory
 std::string getFilePic(std::string ext);
 std::string stringOfSize(int size);
+void initializeFileNames(SDL_Renderer *renderer, AppData *data_ptr, std::string dirname);
 
 int main(int argc, char **argv)
 {
@@ -89,7 +97,7 @@ int main(int argc, char **argv)
 
     // initialize and perform rendering loop
     AppData data;
-    listDirectory((std::string)home, &data);
+    listDirectory((std::string)home, &data,false,0,renderer);
     initialize(renderer, &data);
     render(renderer, &data);
     SDL_Event event;
@@ -101,14 +109,12 @@ int main(int argc, char **argv)
         switch(event.type)
         {
         	case SDL_MOUSEMOTION:
-        		
-        		
         		break;
         	case SDL_MOUSEBUTTONDOWN:
         		
         		if(event.button.button == SDL_BUTTON_LEFT && 
         		event.button.x >= data.up_rect.x &&
-        		event.button.y > 5 && event.button.y < 105 &&
+        		event.button.y > 40 && event.button.y < 100 &&
         		data.file_list.at(0)->namePos.y != 45)
         		{
         			data.up_selected = true;
@@ -116,6 +122,7 @@ int main(int argc, char **argv)
         			for(int i = 0; i < data.file_list.size(); i++){
                     	data.file_list.at(i)->namePos.y +=40;
                         data.file_list.at(i)->sizePos.y +=40;
+                        data.file_list.at(i)->picPos.y +=40;
                     }
         		}
         		else if(event.button.button == SDL_BUTTON_LEFT &&
@@ -128,17 +135,62 @@ int main(int argc, char **argv)
         			for(int i = 0; i < data.file_list.size(); i++){
                     	data.file_list.at(i)->namePos.y -=40;
                         data.file_list.at(i)->sizePos.y -=40;
+                        data.file_list.at(i)->picPos.y -=40;
                     }
         		}
-        		break;
+                else if(event.button.button == SDL_BUTTON_LEFT && 
+                event.button.x >= data.recur_rect.x && event.button.x <= WIDTH &&
+                event.button.y <= 40 && event.button.y >= 0){
+                    if(data.recur_selected){
+                        // data.file_list.clear();
+                        // listDirectory((std::string)home,&data,false,0);
+                        // data.recur_selected = false;
+                    }
+                    else{
+                        // data.file_list.clear();
+                        // listDirectory((std::string)home,&data,true,0);
+                        // data.recur_selected = true;
+                    }
+                    std::cout << " YOU PRESSED THE RECURSIVE BUTTON" << std::endl;
+                }
+                else if(event.button.y > 40){//If a file is selected
+                    int y = event.button.y;
+                    int x = event.button.x;
+                    FileEntry *hold;
+                    for(int i = 0; i < data.file_list.size(); i++){
+                        //check if the same x as the text, and if the same y as the text
+                        //check if the same x and y as the pic
+                        hold = data.file_list.at(i);
+                        if(x >= hold->namePos.x && x <= hold->namePos.x + hold->namePos.w &&
+                           y >= hold->namePos.y && y <= hold->namePos.y + hold->namePos.h ||
+                           x >= hold->picPos.x && x <= hold->picPos.x + hold->picPos.w &&
+                           y >= hold->picPos.y && y <= hold->picPos.y + hold->picPos.h){
+                               if(hold->filePic == "resrc/illustration-data-folder-icon.jpg"){
+                                   data.file_list.clear();
+                                   //render the new directory header
+                                   listDirectory(hold->full_path,&data,false,0,renderer);
+                                   initializeFileNames(renderer,&data,hold->fileName);
+                               }
+                               else{
+                                   //use xdg-open and fork() and exec() to open with the preferred application
+                               }
+                           }
+
+                    }
+
+
+                    
+                    //char *env = getenv()
+                }
+
+                break;
         	case SDL_MOUSEBUTTONUP:
         		data.phrase_selected = false;
-                	data.folder_selected = false;
-                	data.up_selected = false;
-                	data.down_selected = false;
+                data.folder_selected = false;
+                data.up_selected = false;
+                data.down_selected = false;
         		break;
         }
-        
         render(renderer, &data);
 
     }
@@ -169,13 +221,27 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     data_ptr->folder_selected = false;
 
     SDL_Color color = { 0, 0, 0 };
-    SDL_Surface *phrase_surf = TTF_RenderText_Solid(data_ptr->font, "Home Directory", color);
+    SDL_Surface *phrase_surf = TTF_RenderText_Solid(data_ptr->font, "HOME", color);
     data_ptr->phrase = SDL_CreateTextureFromSurface(renderer, phrase_surf);
     SDL_FreeSurface(phrase_surf);
     data_ptr->phrase_rect.x = 10;
     data_ptr->phrase_rect.y = 0;
     SDL_QueryTexture(data_ptr->phrase, NULL, NULL, &(data_ptr->phrase_rect.w), &(data_ptr->phrase_rect.h));
     data_ptr->phrase_selected = false;
+
+    SDL_Surface *size_surf = TTF_RenderText_Solid(data_ptr->font, "Size", color);
+    data_ptr->size = SDL_CreateTextureFromSurface(renderer, size_surf);
+    SDL_FreeSurface(size_surf);
+    data_ptr->size_rect.x = 450;
+    data_ptr->size_rect.y = 0;
+    SDL_QueryTexture(data_ptr->size,NULL,NULL, &(data_ptr->size_rect.w), &(data_ptr->size_rect.h));
+
+    SDL_Surface *perm_surf = TTF_RenderText_Solid(data_ptr->font, "Permissions", color);
+    data_ptr->perm = SDL_CreateTextureFromSurface(renderer, perm_surf);
+    SDL_FreeSurface(size_surf);
+    data_ptr->perm_rect.x = 600;
+    data_ptr->perm_rect.y = 0;
+    SDL_QueryTexture(data_ptr->perm,NULL,NULL, &(data_ptr->perm_rect.w), &(data_ptr->perm_rect.h));
     
     SDL_Surface *exe_surf = IMG_Load("resrc/exe.webp");
     data_ptr->exe = SDL_CreateTextureFromSurface(renderer, exe_surf);
@@ -253,17 +319,8 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     
     
     SDL_RenderCopy(renderer, data_ptr->phrase, NULL, &(data_ptr->phrase_rect));
-    for(int i = 0; i < data_ptr->file_list.size(); i++){
-        //Names of the files
-        phrase_surf = TTF_RenderText_Solid(data_ptr->font, data_ptr->file_list.at(i)->fileName.c_str(), color);
-        data_ptr->file_list.at(i)->nameTexture = SDL_CreateTextureFromSurface(renderer, phrase_surf);
-        SDL_FreeSurface(phrase_surf);
 
-        //size of the files
-        phrase_surf = TTF_RenderText_Solid(data_ptr->font, data_ptr->file_list.at(i)->fileSize.c_str(),color);
-        data_ptr->file_list.at(i)->sizeTexture = SDL_CreateTextureFromSurface(renderer, phrase_surf);
-        SDL_FreeSurface(phrase_surf);
-    }
+    initializeFileNames(renderer,data_ptr, "HOME");
     
 }
 
@@ -285,8 +342,10 @@ void render(SDL_Renderer *renderer, AppData *data_ptr)
         SDL_QueryTexture(data_ptr->file_list.at(i)->sizeTexture,NULL,NULL, &(data_ptr->file_list.at(i)->sizePos.w), &(data_ptr->file_list.at(i)->sizePos.h));
         SDL_RenderCopy(renderer, data_ptr->file_list.at(i)->sizeTexture, NULL, &(data_ptr->file_list.at(i)->sizePos));
 
+        SDL_RenderCopy(renderer, data_ptr->file_list.at(i)->picTexture, NULL, &(data_ptr->file_list.at(i)->picPos));
+
         if(i < 13){
-            seperator = {0,72 + (i*40),WIDTH,1};
+            seperator = {0,80 + (i*40),WIDTH,1};
             SDL_SetRenderDrawColor(renderer,120,120,120,255);
             SDL_RenderFillRect(renderer,&seperator);
         }
@@ -296,23 +355,17 @@ void render(SDL_Renderer *renderer, AppData *data_ptr)
     SDL_SetRenderDrawColor(renderer, 76, 52, 235,255);
     SDL_RenderFillRect(renderer, &titleBar);
     
-    SDL_RenderCopy(renderer, data_ptr->phrase, NULL, &(data_ptr->phrase_rect)); //change the phrase!!!!
+    SDL_RenderCopy(renderer, data_ptr->phrase, NULL, &(data_ptr->phrase_rect));
+
+    SDL_RenderCopy(renderer, data_ptr->size, NULL, &(data_ptr->size_rect));
+
+    SDL_RenderCopy(renderer, data_ptr->perm, NULL, &(data_ptr->perm_rect));
     
     SDL_RenderCopy(renderer, data_ptr->up, NULL, &(data_ptr->up_rect));
     
     SDL_RenderCopy(renderer, data_ptr->down, NULL, &(data_ptr->down_rect));
     
     SDL_RenderCopy(renderer, data_ptr->recur, NULL, &(data_ptr->recur_rect));
-      
-    //SDL_RenderCopy(renderer, data_ptr->exe, NULL, &(data_ptr->exe_rect));
-    
-    //SDL_RenderCopy(renderer, data_ptr->image, NULL, &(data_ptr->image_rect));
-    
-    //SDL_RenderCopy(renderer, data_ptr->video, NULL, &(data_ptr->video_rect));
-    
-    //SDL_RenderCopy(renderer, data_ptr->code, NULL, &(data_ptr->code_rect));
-    
-    //SDL_RenderCopy(renderer, data_ptr->other, NULL, &(data_ptr->other_rect));
  
     // show rendered frame
     SDL_RenderPresent(renderer);
@@ -333,16 +386,22 @@ void quit(AppData *data_ptr)
     TTF_CloseFont(data_ptr->font);
 }
 
-void listDirectory(std::string dirname , AppData *data_ptr)
+void listDirectory(std::string dirname , AppData *data_ptr, bool recursive, int indent, SDL_Renderer *renderer)
 {
     // 4/22 afternoon lecture start at 1:00:09
     // for the recursion part 1:15:04
+    SDL_Surface *pic_surf;
+
+    std::string buffer = "";
+    for(int i = 0; i < indent; i++){
+        buffer += "  ";
+    }
+
     struct stat info;
     int err = stat(dirname.c_str(), &info);
     if (err == 0 && S_ISDIR(info.st_mode))
     {
         std::vector<std::string> file_list;
-        std::vector<std::string> fileType;
         DIR* dir = opendir(dirname.c_str());
       
         struct dirent *entry;
@@ -363,27 +422,62 @@ void listDirectory(std::string dirname , AppData *data_ptr)
       	    file_err = stat(full_path.c_str(), &file_info);
       	    
             FileEntry *temp = new FileEntry();
-            temp->fileName = file_list.at(i);
+            std::string fileName = buffer + file_list.at(i);
+            if(fileName.size() > 27){
+                fileName = fileName.substr(0,27);
+                fileName += "...";
+            }
+            temp->fileName = fileName;
+            temp->full_path = full_path;
             temp->namePos.x = 60;
             temp->namePos.y = 45 + (i*40);
+
             temp->sizePos.x = 450;
             temp->sizePos.y = 45 + (i*40);
 
+            temp->picPos.x = 10;
+            temp->picPos.y = 45 + (i*40);
+            temp->picPos.h = 25;
+            temp->picPos.w = 25;
+
             if(S_ISDIR(file_info.st_mode)){
       	  	    temp->filePic = "resrc/illustration-data-folder-icon.jpg";
-                temp->fileSize = " ";
+                temp->fileSize = "";
+
+                pic_surf = IMG_Load(temp->filePic.c_str());
+                temp->picTexture = SDL_CreateTextureFromSurface(renderer, pic_surf);
+                SDL_FreeSurface(pic_surf);
+
+                data_ptr->file_list.push_back(temp);
+
+                // if(recursive && file_list[i] != ".."){
+                //     listDirectory(full_path,data_ptr,true,indent+1);
+                // }
       	    }
       	    else{
                 int fileSize = file_info.st_size;
                 temp->fileSize = stringOfSize(fileSize);
 
-                //get the file extension
-                int pos = full_path.find_last_of('.');
-                std::string extension = full_path.substr(pos);
-                temp->filePic = getFilePic(extension);
-      	    }
+                int index = -1;
+                for(int j = 0; j < file_list[i].size(); j++){
+                    if(file_list[i][j] == '.'){
+                        index = j;
+                    }
+                }
+                if(index != -1){
+                    std::string extension = file_list[i].substr(index);
+                    temp->filePic = getFilePic(extension);
+                }
+                else{
+                    temp->filePic = getFilePic("");
+                }
 
-            data_ptr->file_list.push_back(temp);
+                pic_surf = IMG_Load(temp->filePic.c_str());
+                temp->picTexture = SDL_CreateTextureFromSurface(renderer, pic_surf);
+                SDL_FreeSurface(pic_surf);
+
+                data_ptr->file_list.push_back(temp);
+      	    }
         }
     }
     else{
@@ -409,13 +503,11 @@ std::string stringOfSize(int size){
     if(size >= 1024 && size < 1048576){
         double size2 = ((double)size / 1024.0)*10;
         size = (int)size2;
-        //size2 = static_cast<double>(static_cast<int>(size2*10.))/10.;
         return std::to_string(size/10) + "." + std::to_string(size%10) + " MiB";
     }
     else if(size >= 1048576 && size < 1073741824){
         double size2 = ((double)size / 1048576.0)*10;
         size = (int)size2;
-        //size2 = static_cast<double>(static_cast<int>(size2*10.0))/10.0;
         return std::to_string(size/10) + "." + std::to_string(size%10) + " KiB";
     }
     else if(size >= 1073741824){
@@ -425,6 +517,31 @@ std::string stringOfSize(int size){
     }
     
     return std::to_string(size) + " B";
+}
+
+void initializeFileNames(SDL_Renderer *renderer, AppData *data_ptr, std::string dirname){
+    SDL_Surface *phrase_surf;
+    SDL_Color color = { 0, 0, 0 };
+
+    phrase_surf = TTF_RenderText_Solid(data_ptr->font, dirname.c_str(), color);
+    data_ptr->phrase = SDL_CreateTextureFromSurface(renderer, phrase_surf);
+    SDL_FreeSurface(phrase_surf);
+    data_ptr->phrase_rect.x = 10;
+    data_ptr->phrase_rect.y = 0;
+    SDL_QueryTexture(data_ptr->phrase, NULL, NULL, &(data_ptr->phrase_rect.w), &(data_ptr->phrase_rect.h));
+    data_ptr->phrase_selected = false;
+
+    for(int i = 0; i < data_ptr->file_list.size(); i++){
+        //Names of the files
+        phrase_surf = TTF_RenderText_Solid(data_ptr->font, data_ptr->file_list.at(i)->fileName.c_str(), color);
+        data_ptr->file_list.at(i)->nameTexture = SDL_CreateTextureFromSurface(renderer, phrase_surf);
+        SDL_FreeSurface(phrase_surf);
+
+        //size of the files
+        phrase_surf = TTF_RenderText_Solid(data_ptr->font, data_ptr->file_list.at(i)->fileSize.c_str(),color);
+        data_ptr->file_list.at(i)->sizeTexture = SDL_CreateTextureFromSurface(renderer, phrase_surf);
+        SDL_FreeSurface(phrase_surf);
+    }
 }
 
 
