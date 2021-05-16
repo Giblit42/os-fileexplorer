@@ -32,6 +32,8 @@ typedef struct FileEntry{
 } FileEntry;
 
 typedef struct AppData {
+    std::string dirname;
+    std::string dirFullPath;
     TTF_Font *font;
     SDL_Texture *folder;
     SDL_Texture *phrase;
@@ -75,7 +77,8 @@ typedef struct AppData {
 void initialize(SDL_Renderer *renderer, AppData *data_ptr);
 void render(SDL_Renderer *renderer, AppData *data_ptr);
 void quit(AppData *data_ptr);
-void listDirectory(std::string dirname, AppData *data_ptr, bool recursive, int indent, SDL_Renderer *renderer); // watch 04/22 recording on printing directory
+void listDirectory(std::string dirname, AppData *data_ptr, SDL_Renderer *renderer);
+void recursiveListDirectory(std::string dirname, AppData *data_ptr, int indent, SDL_Renderer *renderer);
 std::string getFilePic(std::string ext);
 std::string stringOfSize(int size);
 void initializeFileNames(SDL_Renderer *renderer, AppData *data_ptr, std::string dirname);
@@ -97,7 +100,8 @@ int main(int argc, char **argv)
 
     // initialize and perform rendering loop
     AppData data;
-    listDirectory((std::string)home, &data,false,0,renderer);
+    listDirectory((std::string)home, &data,renderer);
+    data.dirname = "HOME";
     initialize(renderer, &data);
     render(renderer, &data);
     SDL_Event event;
@@ -142,14 +146,16 @@ int main(int argc, char **argv)
                 event.button.x >= data.recur_rect.x && event.button.x <= WIDTH &&
                 event.button.y <= 40 && event.button.y >= 0){
                     if(data.recur_selected){
-                        // data.file_list.clear();
-                        // listDirectory((std::string)home,&data,false,0);
-                        // data.recur_selected = false;
+                        data.file_list.clear();
+                        listDirectory(data.dirname,&data,renderer);
+                        initializeFileNames(renderer,&data,data.dirname);
+                        data.recur_selected = false;
                     }
                     else{
-                        // data.file_list.clear();
-                        // listDirectory((std::string)home,&data,true,0);
-                        // data.recur_selected = true;
+                        data.file_list.clear();
+                        recursiveListDirectory(data.dirFullPath,&data,0,renderer);
+                        initializeFileNames(renderer,&data,data.dirname);
+                        data.recur_selected = true;
                     }
                     std::cout << " YOU PRESSED THE RECURSIVE BUTTON" << std::endl;
                 }
@@ -168,7 +174,14 @@ int main(int argc, char **argv)
                                if(hold->filePic == "resrc/illustration-data-folder-icon.jpg"){
                                    data.file_list.clear();
                                    //render the new directory header
-                                   listDirectory(hold->full_path,&data,false,0,renderer);
+                                   data.dirname = hold->fileName;
+                                   data.dirFullPath = hold->full_path;
+                                   if(data.recur_selected){
+                                       recursiveListDirectory(data.dirFullPath,&data,0,renderer);
+                                   }
+                                   else{
+                                       listDirectory(hold->full_path,&data,renderer);
+                                   }
                                    initializeFileNames(renderer,&data,hold->fileName);
                                }
                                else{
@@ -386,15 +399,102 @@ void quit(AppData *data_ptr)
     TTF_CloseFont(data_ptr->font);
 }
 
-void listDirectory(std::string dirname , AppData *data_ptr, bool recursive, int indent, SDL_Renderer *renderer)
+void listDirectory(std::string dirname , AppData *data_ptr, SDL_Renderer *renderer)
 {
-    // 4/22 afternoon lecture start at 1:00:09
-    // for the recursion part 1:15:04
+    SDL_Surface *pic_surf;
+
+    struct stat info;
+    int err = stat(dirname.c_str(), &info);
+    if (err == 0 && S_ISDIR(info.st_mode))
+    {
+        std::vector<std::string> file_list;
+        DIR* dir = opendir(dirname.c_str());
+      
+        struct dirent *entry;
+        while((entry = readdir(dir)) != NULL){
+      	    if((std::string)entry->d_name != "."){
+                file_list.push_back(entry->d_name);
+            }
+        }
+        closedir(dir);
+      
+        std::sort(file_list.begin(), file_list.end());
+      
+        int i, file_err;
+        struct stat file_info;
+        for(i = 0; i < file_list.size(); i++)
+        {
+      	    std::string full_path = dirname + "/" + file_list[i];
+      	    file_err = stat(full_path.c_str(), &file_info);
+      	    
+            FileEntry *temp = new FileEntry();
+            std::string fileName = file_list.at(i);
+            if(file_list.at(i).size() > 27){
+                fileName = fileName.substr(0,27);
+                fileName += "...";
+            }
+            temp->fileName = fileName;
+            temp->full_path = full_path;
+            temp->namePos.x = 60;
+            temp->namePos.y = 45 + (i*40);
+
+            temp->sizePos.x = 450;
+            temp->sizePos.y = 45 + (i*40);
+
+            temp->picPos.x = 10;
+            temp->picPos.y = 45 + (i*40);
+            temp->picPos.h = 25;
+            temp->picPos.w = 25;
+
+            if(file_err){}
+            else if(S_ISDIR(file_info.st_mode)){
+      	  	    temp->filePic = "resrc/illustration-data-folder-icon.jpg";
+                temp->fileSize = "";
+
+                pic_surf = IMG_Load(temp->filePic.c_str());
+                temp->picTexture = SDL_CreateTextureFromSurface(renderer, pic_surf);
+                SDL_FreeSurface(pic_surf);
+
+                data_ptr->file_list.push_back(temp);
+      	    }
+      	    else{
+                int fileSize = file_info.st_size;
+                temp->fileSize = stringOfSize(fileSize);
+
+                int index = -1;
+                for(int j = 0; j < file_list[i].size(); j++){
+                    if(file_list[i][j] == '.'){
+                        index = j;
+                    }
+                }
+                if(index != -1){
+                    std::string extension = file_list[i].substr(index);
+                    temp->filePic = getFilePic(extension);
+                }
+                else{
+                    temp->filePic = getFilePic("");
+                }
+
+                pic_surf = IMG_Load(temp->filePic.c_str());
+                temp->picTexture = SDL_CreateTextureFromSurface(renderer, pic_surf);
+                SDL_FreeSurface(pic_surf);
+
+                data_ptr->file_list.push_back(temp);
+      	    }
+        }
+    }
+    else{
+        fprintf(stderr, "Error: directory '%s' is not found\n", dirname.c_str());       
+    }
+   
+}
+
+void recursiveListDirectory(std::string dirname , AppData *data_ptr, int indent, SDL_Renderer *renderer){
     SDL_Surface *pic_surf;
 
     std::string buffer = "";
     for(int i = 0; i < indent; i++){
-        buffer += "  ";
+        buffer += "    ";
     }
 
     struct stat info;
@@ -430,17 +530,18 @@ void listDirectory(std::string dirname , AppData *data_ptr, bool recursive, int 
             temp->fileName = fileName;
             temp->full_path = full_path;
             temp->namePos.x = 60;
-            temp->namePos.y = 45 + (i*40);
+            temp->namePos.y = 45 + (data_ptr->file_list.size()*40);
 
             temp->sizePos.x = 450;
-            temp->sizePos.y = 45 + (i*40);
+            temp->sizePos.y = 45 + (data_ptr->file_list.size()*40);
 
             temp->picPos.x = 10;
-            temp->picPos.y = 45 + (i*40);
+            temp->picPos.y = 45 + (data_ptr->file_list.size()*40);
             temp->picPos.h = 25;
             temp->picPos.w = 25;
 
-            if(S_ISDIR(file_info.st_mode)){
+            if(file_err){}
+            else if(S_ISDIR(file_info.st_mode)){
       	  	    temp->filePic = "resrc/illustration-data-folder-icon.jpg";
                 temp->fileSize = "";
 
@@ -450,9 +551,9 @@ void listDirectory(std::string dirname , AppData *data_ptr, bool recursive, int 
 
                 data_ptr->file_list.push_back(temp);
 
-                // if(recursive && file_list[i] != ".."){
-                //     listDirectory(full_path,data_ptr,true,indent+1);
-                // }
+                if(file_list.at(i) != ".."){
+                    recursiveListDirectory(full_path,data_ptr,indent+1,renderer);
+                }
       	    }
       	    else{
                 int fileSize = file_info.st_size;
@@ -483,7 +584,6 @@ void listDirectory(std::string dirname , AppData *data_ptr, bool recursive, int 
     else{
         fprintf(stderr, "Error: directory '%s' is not found\n", dirname.c_str());       
     }
-   
 }
 
 std::string getFilePic(std::string ext){
