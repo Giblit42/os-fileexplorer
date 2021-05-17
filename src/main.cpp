@@ -9,13 +9,10 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
+#include <unistd.h>
 
 #define WIDTH 800
 #define HEIGHT 600
-
-//Questions to ask in office hours:
-// - capital coming first with the sort
-// - after pressing .., directory name is ..
 
 typedef struct FileEntry{
     std::string fileName;
@@ -96,6 +93,7 @@ int main(int argc, char **argv)
 {
     char *home = getenv("HOME");
     printf("HOME: %s\n", home);
+    std::string home2 = std::string(home);
 
     // initializing SDL as Video
     SDL_Init(SDL_INIT_VIDEO);
@@ -110,7 +108,15 @@ int main(int argc, char **argv)
     // initialize and perform rendering loop
     AppData data;
     listDirectory((std::string)home, &data,renderer);
-    data.dirname = "HOME";
+
+    int index = -1;
+    for(int i = 0; i < home2.size(); i++){
+        if(home2[i] == '/'){
+            index = i;
+        }
+    }
+    data.dirname = home2.substr(index+1);
+    
     initialize(renderer, &data);
     render(renderer, &data);
     SDL_Event event;
@@ -131,7 +137,6 @@ int main(int argc, char **argv)
         		data.file_list.at(0)->namePos.y != 45)
         		{
         			data.up_selected = true;
-        			//data.folder_rect.y += 40;
         			for(int i = 0; i < data.file_list.size(); i++){
                     	data.file_list.at(i)->namePos.y +=40;
                         data.file_list.at(i)->sizePos.y +=40;
@@ -145,7 +150,6 @@ int main(int argc, char **argv)
         		data.file_list.at(data.file_list.size()-1)->namePos.y >= HEIGHT-50)
         		{
         			data.down_selected = true;
-        			//data.folder_rect.y -= 45;
         			for(int i = 0; i < data.file_list.size(); i++){
                     	data.file_list.at(i)->namePos.y -=40;
                         data.file_list.at(i)->sizePos.y -=40;
@@ -169,35 +173,65 @@ int main(int argc, char **argv)
                         data.recur_selected = true;
                     }
                 }
-                else if(event.button.y > 40){//If a file is selected
+                else{ //if(event.button.y > 40){//If a file is selected
                     int y = event.button.y;
                     int x = event.button.x;
                     FileEntry *hold;
                     for(int i = 0; i < data.file_list.size(); i++){
-                        //check if the same x as the text, and if the same y as the text
-                        //check if the same x and y as the pic
                         hold = data.file_list.at(i);
                         if(x >= hold->namePos.x && x <= hold->namePos.x + hold->namePos.w &&
-                           y >= hold->namePos.y && y <= hold->namePos.y + hold->namePos.h ||
-                           x >= hold->picPos.x && x <= hold->picPos.x + hold->picPos.w &&
-                           y >= hold->picPos.y && y <= hold->picPos.y + hold->picPos.h){
-                               if(hold->filePic == "resrc/illustration-data-folder-icon.jpg"){
+                            y >= hold->namePos.y && y <= hold->namePos.y + hold->namePos.h ||
+                            x >= hold->picPos.x && x <= hold->picPos.x + hold->picPos.w &&
+                            y >= hold->picPos.y && y <= hold->picPos.y + hold->picPos.h){
+                                if(hold->filePic == "resrc/illustration-data-folder-icon.jpg"){
                                    data.file_list.clear();
-                                   //render the new directory header
-                                   data.dirname = hold->fileName;
-                                   data.dirFullPath = hold->full_path;
+                                    data.dirname = hold->fileName;
+                                    if(data.dirname == ".."){
+                                        int index;
+                                        for(int k = 0; k < 2; k++){
+                                            index = -1;
+                                            for(int j = 0; j < hold->full_path.size(); j++){
+                                                if(hold->full_path[j] == '/'){
+                                                    index = j;
+                                                }
+                                            }
+                                            hold->full_path = hold->full_path.substr(0,index);
+                                        }
+                                        index = -1;
+                                        for(int j = 0; j < hold->full_path.size(); j++){
+                                            if(hold->full_path[j] == '/'){
+                                                index = j;
+                                            }
+                                        }
+                                        data.dirFullPath = hold->full_path;
+                                        data.dirname = data.dirFullPath.substr(index+1);
+                                    }
+                                    else{
+                                        data.dirFullPath = hold->full_path;
+                                        data.dirname = hold->fileName;
+                                    }
                                    if(data.recur_selected){
                                        recursiveListDirectory(data.dirFullPath,&data,0,renderer);
                                    }
                                    else{
                                        listDirectory(hold->full_path,&data,renderer);
                                    }
-                                   initializeFileNames(renderer,&data,hold->fileName);
+                                   initializeFileNames(renderer,&data,data.dirname);
                                }
                                else{
-                                   //use xdg-open and fork() and exec() to open with the preferred application
+                                   int pid = fork();
+                                   if(pid == 0){
+                                        char *argv[3];
+                                        argv[0] = new char[9];
+                                        strcpy(argv[0],"xdg-open");
+                                        argv[1] = new char[hold->full_path.size()+1];
+                                        strcpy(argv[1],hold->full_path.c_str());
+                                        argv[2] = NULL;
+                                        
+                                        execvp("xdg-open",argv);
+                                   }
                                }
-                           }
+                        }
 
                     }
                 }
@@ -240,13 +274,6 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     data_ptr->folder_selected = false;
 
     SDL_Color color = { 0, 0, 0 };
-    SDL_Surface *phrase_surf = TTF_RenderText_Solid(data_ptr->font, "HOME", color);
-    data_ptr->phrase = SDL_CreateTextureFromSurface(renderer, phrase_surf);
-    SDL_FreeSurface(phrase_surf);
-    data_ptr->phrase_rect.x = 10;
-    data_ptr->phrase_rect.y = 0;
-    SDL_QueryTexture(data_ptr->phrase, NULL, NULL, &(data_ptr->phrase_rect.w), &(data_ptr->phrase_rect.h));
-    data_ptr->phrase_selected = false;
 
     SDL_Surface *size_surf = TTF_RenderText_Solid(data_ptr->font, "Size", color);
     data_ptr->size = SDL_CreateTextureFromSurface(renderer, size_surf);
@@ -260,52 +287,7 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     SDL_FreeSurface(size_surf);
     data_ptr->perm_rect.x = 600;
     data_ptr->perm_rect.y = 0;
-    SDL_QueryTexture(data_ptr->perm,NULL,NULL, &(data_ptr->perm_rect.w), &(data_ptr->perm_rect.h));
-    
-    SDL_Surface *exe_surf = IMG_Load("resrc/exe.webp");
-    data_ptr->exe = SDL_CreateTextureFromSurface(renderer, exe_surf);
-    SDL_FreeSurface(exe_surf);
-    data_ptr->exe_rect.x = 200;
-    data_ptr->exe_rect.y = 10;
-    data_ptr->exe_rect.w = 60;
-    data_ptr->exe_rect.h = 60;
-    data_ptr->exe_selected = false;
-    
-    SDL_Surface *image_surf = IMG_Load("resrc/image.webp");
-    data_ptr->image = SDL_CreateTextureFromSurface(renderer, image_surf);
-    SDL_FreeSurface(image_surf);
-    data_ptr->image_rect.x = 400;
-    data_ptr->image_rect.y = 10;
-    data_ptr->image_rect.w = 60;
-    data_ptr->image_rect.h = 60;
-    data_ptr->image_selected = false;
-    
-    SDL_Surface *video_surf = IMG_Load("resrc/video.webp");
-    data_ptr->video = SDL_CreateTextureFromSurface(renderer, video_surf);
-    SDL_FreeSurface(video_surf);
-    data_ptr->video_rect.x = 10;
-    data_ptr->video_rect.y = 200;
-    data_ptr->video_rect.w = 60;
-    data_ptr->video_rect.h = 60;
-    data_ptr->video_selected = false;
-    
-    SDL_Surface *code_surf = IMG_Load("resrc/code.webp");
-    data_ptr->code = SDL_CreateTextureFromSurface(renderer, code_surf);
-    SDL_FreeSurface(code_surf);
-    data_ptr->code_rect.x = 200;
-    data_ptr->code_rect.y = 200;
-    data_ptr->code_rect.w = 60;
-    data_ptr->code_rect.h = 60;
-    data_ptr->code_selected = false;
-    
-    SDL_Surface *other_surf = IMG_Load("resrc/other.webp");
-    data_ptr->other = SDL_CreateTextureFromSurface(renderer, other_surf);
-    SDL_FreeSurface(other_surf);
-    data_ptr->other_rect.x = 400;
-    data_ptr->other_rect.y = 200;
-    data_ptr->other_rect.w = 60;
-    data_ptr->other_rect.h = 60;
-    data_ptr->other_selected = false;
+    SDL_QueryTexture(data_ptr->perm,NULL,NULL, &(data_ptr->perm_rect.w), &(data_ptr->perm_rect.h));   
     
     SDL_Surface *up_surf = IMG_Load("resrc/up.svg");
     data_ptr->up = SDL_CreateTextureFromSurface(renderer, up_surf);
@@ -337,7 +319,7 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     
     SDL_RenderCopy(renderer, data_ptr->phrase, NULL, &(data_ptr->phrase_rect));
 
-    initializeFileNames(renderer,data_ptr, "HOME");
+    initializeFileNames(renderer,data_ptr,data_ptr->dirname);
     
 }
 
@@ -440,7 +422,6 @@ void listDirectory(std::string dirname , AppData *data_ptr, SDL_Renderer *render
                 fileName = fileName.substr(0,27);
                 fileName += "...";
             }
-            temp->permissions = getPermissions(file_info);
             temp->fileName = fileName;
             temp->full_path = full_path;
             temp->namePos.x = 60;
@@ -469,6 +450,7 @@ void listDirectory(std::string dirname , AppData *data_ptr, SDL_Renderer *render
                 data_ptr->file_list.push_back(temp);
       	    }
       	    else{
+                temp->permissions = getPermissions(file_info);
                 int fileSize = file_info.st_size;
                 temp->fileSize = stringOfSize(fileSize);
 
@@ -538,7 +520,6 @@ void recursiveListDirectory(std::string dirname , AppData *data_ptr, int indent,
                 fileName = fileName.substr(0,27);
                 fileName += "...";
             }
-            temp->permissions = getPermissions(file_info);
             temp->fileName = fileName;
             temp->full_path = full_path;
             temp->namePos.x = 60;
@@ -571,6 +552,7 @@ void recursiveListDirectory(std::string dirname , AppData *data_ptr, int indent,
                 }
       	    }
       	    else{
+                temp->permissions = getPermissions(file_info);
                 int fileSize = file_info.st_size;
                 temp->fileSize = stringOfSize(fileSize);
 
@@ -665,7 +647,6 @@ void initializeFileNames(SDL_Renderer *renderer, AppData *data_ptr, std::string 
 
 std::string getPermissions(struct stat fileStat){
     std::string result = "";
-    (S_ISDIR(fileStat.st_mode)) ? result += 'd' : result += '-';
     (fileStat.st_mode & S_IRUSR) ? result += 'r' : result += '-';
     (fileStat.st_mode & S_IWUSR) ? result += 'w' : result += '-';
     (fileStat.st_mode & S_IXUSR) ? result += 'x' : result += '-';
@@ -677,6 +658,3 @@ std::string getPermissions(struct stat fileStat){
     (fileStat.st_mode & S_IXOTH) ? result += 'x' : result += '-';
     return result;
 }
-
-
-
