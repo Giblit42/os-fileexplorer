@@ -109,6 +109,7 @@ int main(int argc, char **argv)
     AppData data;
     listDirectory((std::string)home, &data,renderer);
 
+    //get the name of directory
     int index = -1;
     for(int i = 0; i < home2.size(); i++){
         if(home2[i] == '/'){
@@ -116,7 +117,7 @@ int main(int argc, char **argv)
         }
     }
     data.dirname = home2.substr(index+1);
-    
+
     initialize(renderer, &data);
     render(renderer, &data);
     SDL_Event event;
@@ -127,16 +128,15 @@ int main(int argc, char **argv)
         SDL_WaitEvent(&event);
         switch(event.type)
         {
-        	case SDL_MOUSEMOTION:
-        		break;
-        	case SDL_MOUSEBUTTONDOWN:
-        		
-        		if(event.button.button == SDL_BUTTON_LEFT && 
+            //Handles clicking mouse
+        	case SDL_MOUSEBUTTONDOWN:	
+                // If the up arrow is clicked
+        		if(event.button.button == SDL_BUTTON_LEFT &&
         		event.button.x >= data.up_rect.x &&
         		event.button.y > 40 && event.button.y < 100 &&
         		data.file_list.at(0)->namePos.y != 45)
         		{
-        			data.up_selected = true;
+                    //shift everything down
         			for(int i = 0; i < data.file_list.size(); i++){
                     	data.file_list.at(i)->namePos.y +=40;
                         data.file_list.at(i)->sizePos.y +=40;
@@ -144,12 +144,13 @@ int main(int argc, char **argv)
                         data.file_list.at(i)->permPos.y += 40;
                     }
         		}
+                //if the down arrow is clicked
         		else if(event.button.button == SDL_BUTTON_LEFT &&
         		event.button.x >= data.down_rect.x &&
         		event.button.y > 500 && event.button.y < 600 &&
         		data.file_list.at(data.file_list.size()-1)->namePos.y >= HEIGHT-50)
         		{
-        			data.down_selected = true;
+                    //shift everything up
         			for(int i = 0; i < data.file_list.size(); i++){
                     	data.file_list.at(i)->namePos.y -=40;
                         data.file_list.at(i)->sizePos.y -=40;
@@ -157,37 +158,48 @@ int main(int argc, char **argv)
                         data.file_list.at(i)->permPos.y -= 40;
                     }
         		}
+                //If the recursion button is clicked
                 else if(event.button.button == SDL_BUTTON_LEFT && 
                 event.button.x >= data.recur_rect.x && event.button.x <= WIDTH &&
                 event.button.y <= 40 && event.button.y >= 0){
+                    //if not recursion, do recursion
                     if(data.recur_selected){
                         data.file_list.clear();
                         listDirectory(data.dirFullPath,&data,renderer);
                         initializeFileNames(renderer,&data,data.dirname);
                         data.recur_selected = false;
                     }
-                    else{
+                    //dont do recusion
+                    else{ 
                         data.file_list.clear();
                         recursiveListDirectory(data.dirFullPath,&data,0,renderer);
                         initializeFileNames(renderer,&data,data.dirname);
                         data.recur_selected = true;
                     }
                 }
-                else{ //if(event.button.y > 40){//If a file is selected
+                else{//if anywhere else is clicked
                     int y = event.button.y;
                     int x = event.button.x;
                     FileEntry *hold;
+                    //Check each file to see if you clicked on the name or picture
                     for(int i = 0; i < data.file_list.size(); i++){
                         hold = data.file_list.at(i);
                         if(x >= hold->namePos.x && x <= hold->namePos.x + hold->namePos.w &&
                             y >= hold->namePos.y && y <= hold->namePos.y + hold->namePos.h ||
                             x >= hold->picPos.x && x <= hold->picPos.x + hold->picPos.w &&
                             y >= hold->picPos.y && y <= hold->picPos.y + hold->picPos.h){
+                                //if the file is a directory
                                 if(hold->filePic == "resrc/illustration-data-folder-icon.jpg"){
-                                   data.file_list.clear();
+                                    data.file_list.clear();
                                     data.dirname = hold->fileName;
-                                    if(data.dirname == ".."){
+                                    //trim whitespace off the front
+                                    const std::string WHITESPACE = " ";
+                                    int pos = data.dirname.find_first_not_of(WHITESPACE);
+                                    data.dirname = data.dirname.substr(pos);
+
+                                    if(data.dirname == ".."){//if directory
                                         int index;
+                                        //trim the end to get the correct path and directory name
                                         for(int k = 0; k < 2; k++){
                                             index = -1;
                                             for(int j = 0; j < hold->full_path.size(); j++){
@@ -219,6 +231,7 @@ int main(int argc, char **argv)
                                    initializeFileNames(renderer,&data,data.dirname);
                                }
                                else{
+                                   //open with desired application
                                    int pid = fork();
                                    if(pid == 0){
                                         char *argv[3];
@@ -235,17 +248,9 @@ int main(int argc, char **argv)
 
                     }
                 }
-
-                break;
-        	case SDL_MOUSEBUTTONUP:
-        		data.phrase_selected = false;
-                data.folder_selected = false;
-                data.up_selected = false;
-                data.down_selected = false;
-        		break;
+                break; //leave the mousebutton down
         }
         render(renderer, &data);
-
     }
 
     // clean up
@@ -263,18 +268,9 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
 {
     data_ptr->font = TTF_OpenFont("resrc/OpenSans-Regular.ttf", 24);
 
-	// I think we want images of folders
-    SDL_Surface *img_surf = IMG_Load("resrc/illustration-data-folder-icon.jpg");
-    data_ptr->folder = SDL_CreateTextureFromSurface(renderer, img_surf);
-    SDL_FreeSurface(img_surf);
-    data_ptr->folder_rect.x = 10;
-    data_ptr->folder_rect.y = 10;
-    data_ptr->folder_rect.w = 60;
-    data_ptr->folder_rect.h = 60;
-    data_ptr->folder_selected = false;
-
     SDL_Color color = { 0, 0, 0 };
 
+    //create the size text
     SDL_Surface *size_surf = TTF_RenderText_Solid(data_ptr->font, "Size", color);
     data_ptr->size = SDL_CreateTextureFromSurface(renderer, size_surf);
     SDL_FreeSurface(size_surf);
@@ -282,6 +278,7 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     data_ptr->size_rect.y = 0;
     SDL_QueryTexture(data_ptr->size,NULL,NULL, &(data_ptr->size_rect.w), &(data_ptr->size_rect.h));
 
+    //create the permission text
     SDL_Surface *perm_surf = TTF_RenderText_Solid(data_ptr->font, "Permissions", color);
     data_ptr->perm = SDL_CreateTextureFromSurface(renderer, perm_surf);
     SDL_FreeSurface(size_surf);
@@ -289,6 +286,7 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     data_ptr->perm_rect.y = 0;
     SDL_QueryTexture(data_ptr->perm,NULL,NULL, &(data_ptr->perm_rect.w), &(data_ptr->perm_rect.h));   
     
+    //create the up arrow
     SDL_Surface *up_surf = IMG_Load("resrc/up.svg");
     data_ptr->up = SDL_CreateTextureFromSurface(renderer, up_surf);
     SDL_FreeSurface(up_surf);
@@ -298,6 +296,7 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     data_ptr->up_rect.h = 60;
     data_ptr->up_selected = false;
     
+    //create the down arrow
     SDL_Surface *down_surf = IMG_Load("resrc/down2.png");
     data_ptr->down = SDL_CreateTextureFromSurface(renderer, down_surf);
     SDL_FreeSurface(down_surf);
@@ -307,6 +306,7 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     data_ptr->down_rect.h = 60;
     data_ptr->down_selected = false;
     
+    //create the recursion button
     SDL_Surface *recur_surf = IMG_Load("resrc/Recursion.jpeg");
     data_ptr->recur = SDL_CreateTextureFromSurface(renderer, recur_surf);
     SDL_FreeSurface(recur_surf);
@@ -315,7 +315,6 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     data_ptr->recur_rect.w = 40;
     data_ptr->recur_rect.h = 40;
     data_ptr->recur_selected = false;
-    
     
     SDL_RenderCopy(renderer, data_ptr->phrase, NULL, &(data_ptr->phrase_rect));
 
@@ -329,23 +328,26 @@ void render(SDL_Renderer *renderer, AppData *data_ptr)
     // erase renderer content
     SDL_SetRenderDrawColor(renderer, 235, 235, 235, 255);
     SDL_RenderClear(renderer);
-     
-    // TODO: draw!
 
     SDL_Rect seperator; 
     
     for(int i = 0; i < data_ptr->file_list.size(); i++){
+        //display name of each file
         SDL_QueryTexture(data_ptr->file_list.at(i)->nameTexture, NULL, NULL, &(data_ptr->file_list.at(i)->namePos.w), &(data_ptr->file_list.at(i)->namePos.h));
         SDL_RenderCopy(renderer, data_ptr->file_list.at(i)->nameTexture, NULL, &(data_ptr->file_list.at(i)->namePos));
 
+        //display size of each file
         SDL_QueryTexture(data_ptr->file_list.at(i)->sizeTexture,NULL,NULL, &(data_ptr->file_list.at(i)->sizePos.w), &(data_ptr->file_list.at(i)->sizePos.h));
         SDL_RenderCopy(renderer, data_ptr->file_list.at(i)->sizeTexture, NULL, &(data_ptr->file_list.at(i)->sizePos));
 
+        //display permissions of each file
         SDL_QueryTexture(data_ptr->file_list.at(i)->permTexture,NULL,NULL, &(data_ptr->file_list.at(i)->permPos.w), &(data_ptr->file_list.at(i)->permPos.h));
         SDL_RenderCopy(renderer, data_ptr->file_list.at(i)->permTexture, NULL, &(data_ptr->file_list.at(i)->permPos));
 
+        //display picture of each file
         SDL_RenderCopy(renderer, data_ptr->file_list.at(i)->picTexture, NULL, &(data_ptr->file_list.at(i)->picPos));
 
+        //draw the seperators
         if(i < 13){
             seperator = {0,80 + (i*40),WIDTH,1};
             SDL_SetRenderDrawColor(renderer,120,120,120,255);
@@ -353,10 +355,12 @@ void render(SDL_Renderer *renderer, AppData *data_ptr)
         }
     }
     
+    //create the blue title bar
     SDL_Rect titleBar = {0, 0, WIDTH, 40};
     SDL_SetRenderDrawColor(renderer, 76, 52, 235,255);
     SDL_RenderFillRect(renderer, &titleBar);
     
+    //render other texts and pictures
     SDL_RenderCopy(renderer, data_ptr->phrase, NULL, &(data_ptr->phrase_rect));
 
     SDL_RenderCopy(renderer, data_ptr->size, NULL, &(data_ptr->size_rect));
@@ -400,6 +404,7 @@ void listDirectory(std::string dirname , AppData *data_ptr, SDL_Renderer *render
         DIR* dir = opendir(dirname.c_str());
       
         struct dirent *entry;
+        //get all string names
         while((entry = readdir(dir)) != NULL){
       	    if((std::string)entry->d_name != "."){
                 file_list.push_back(entry->d_name);
@@ -407,6 +412,7 @@ void listDirectory(std::string dirname , AppData *data_ptr, SDL_Renderer *render
         }
         closedir(dir);
       
+        //sort based on ascii value
         std::sort(file_list.begin(), file_list.end());
       
         int i, file_err;
@@ -418,42 +424,48 @@ void listDirectory(std::string dirname , AppData *data_ptr, SDL_Renderer *render
       	    
             FileEntry *temp = new FileEntry();
             std::string fileName = file_list.at(i);
-            if(file_list.at(i).size() > 27){
+            if(file_list.at(i).size() > 27){ //if the name is too big
                 fileName = fileName.substr(0,27);
                 fileName += "...";
             }
+            //location of file name
             temp->fileName = fileName;
             temp->full_path = full_path;
             temp->namePos.x = 60;
             temp->namePos.y = 45 + (i*40);
 
+            //location of size
             temp->sizePos.x = 450;
             temp->sizePos.y = 45 + (i*40);
 
+            //size of the picture
             temp->picPos.x = 10;
             temp->picPos.y = 45 + (i*40);
             temp->picPos.h = 25;
             temp->picPos.w = 25;
 
+            //permissions location
             temp->permPos.x = 600;
             temp->permPos.y = 45 + (i*40);
 
             if(file_err){}
-            else if(S_ISDIR(file_info.st_mode)){
+            else if(S_ISDIR(file_info.st_mode)){ //if a directory
       	  	    temp->filePic = "resrc/illustration-data-folder-icon.jpg";
                 temp->fileSize = "";
 
+                //initialize the file picture
                 pic_surf = IMG_Load(temp->filePic.c_str());
                 temp->picTexture = SDL_CreateTextureFromSurface(renderer, pic_surf);
                 SDL_FreeSurface(pic_surf);
 
                 data_ptr->file_list.push_back(temp);
       	    }
-      	    else{
-                temp->permissions = getPermissions(file_info);
+      	    else{ //if not a directory
+                temp->permissions = getPermissions(file_info); //get permissions for the file
                 int fileSize = file_info.st_size;
-                temp->fileSize = stringOfSize(fileSize);
+                temp->fileSize = stringOfSize(fileSize); //format the size of the file
 
+                //get the extension of the file
                 int index = -1;
                 for(int j = 0; j < file_list[i].size(); j++){
                     if(file_list[i][j] == '.'){
@@ -468,6 +480,7 @@ void listDirectory(std::string dirname , AppData *data_ptr, SDL_Renderer *render
                     temp->filePic = getFilePic("");
                 }
 
+                //initialize the file picture
                 pic_surf = IMG_Load(temp->filePic.c_str());
                 temp->picTexture = SDL_CreateTextureFromSurface(renderer, pic_surf);
                 SDL_FreeSurface(pic_surf);
@@ -485,6 +498,7 @@ void listDirectory(std::string dirname , AppData *data_ptr, SDL_Renderer *render
 void recursiveListDirectory(std::string dirname , AppData *data_ptr, int indent, SDL_Renderer *renderer){
     SDL_Surface *pic_surf;
 
+    //create a whitespace buffer
     std::string buffer = "";
     for(int i = 0; i < indent; i++){
         buffer += "    ";
@@ -498,6 +512,7 @@ void recursiveListDirectory(std::string dirname , AppData *data_ptr, int indent,
         DIR* dir = opendir(dirname.c_str());
       
         struct dirent *entry;
+        //get the file names in the directory
         while((entry = readdir(dir)) != NULL){
       	    if((std::string)entry->d_name != "."){
                 file_list.push_back(entry->d_name);
@@ -505,6 +520,7 @@ void recursiveListDirectory(std::string dirname , AppData *data_ptr, int indent,
         }
         closedir(dir);
       
+        //sort by ascii value
         std::sort(file_list.begin(), file_list.end());
       
         int i, file_err;
@@ -515,29 +531,34 @@ void recursiveListDirectory(std::string dirname , AppData *data_ptr, int indent,
       	    file_err = stat(full_path.c_str(), &file_info);
       	    
             FileEntry *temp = new FileEntry();
+            //don't let the name get too big
             std::string fileName = buffer + file_list.at(i);
             if(fileName.size() > 27){
                 fileName = fileName.substr(0,27);
                 fileName += "...";
             }
+            //file location
             temp->fileName = fileName;
             temp->full_path = full_path;
             temp->namePos.x = 60;
             temp->namePos.y = 45 + (data_ptr->file_list.size()*40);
 
+            //size location
             temp->sizePos.x = 450;
             temp->sizePos.y = 45 + (data_ptr->file_list.size()*40);
 
+            //picture sizes
             temp->picPos.x = 10;
             temp->picPos.y = 45 + (data_ptr->file_list.size()*40);
             temp->picPos.h = 25;
             temp->picPos.w = 25;
 
+            //permissions location
             temp->permPos.x = 600;
             temp->permPos.y = 45 + (data_ptr->file_list.size()*40);
 
             if(file_err){}
-            else if(S_ISDIR(file_info.st_mode)){
+            else if(S_ISDIR(file_info.st_mode)){ //if directory
       	  	    temp->filePic = "resrc/illustration-data-folder-icon.jpg";
                 temp->fileSize = "";
 
@@ -547,7 +568,7 @@ void recursiveListDirectory(std::string dirname , AppData *data_ptr, int indent,
 
                 data_ptr->file_list.push_back(temp);
 
-                if(file_list.at(i) != ".."){
+                if(file_list.at(i) != ".."){ //if not a .., recurse on contents
                     recursiveListDirectory(full_path,data_ptr,indent+1,renderer);
                 }
       	    }
@@ -583,6 +604,7 @@ void recursiveListDirectory(std::string dirname , AppData *data_ptr, int indent,
     }
 }
 
+//assign the correct path to a picture based on the inputted extension
 std::string getFilePic(std::string ext){
     if(ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".tif" || ext == ".tiff" || ext == ".gif"){ //if the extension is a picture
         return "resrc/image.webp";
@@ -596,16 +618,17 @@ std::string getFilePic(std::string ext){
     return "resrc/other.webp";//other file pic
 }
 
+//Formats the inputted size of a file
 std::string stringOfSize(int size){
     if(size >= 1024 && size < 1048576){
         double size2 = ((double)size / 1024.0)*10;
         size = (int)size2;
-        return std::to_string(size/10) + "." + std::to_string(size%10) + " MiB";
+        return std::to_string(size/10) + "." + std::to_string(size%10) + " KiB";
     }
     else if(size >= 1048576 && size < 1073741824){
         double size2 = ((double)size / 1048576.0)*10;
         size = (int)size2;
-        return std::to_string(size/10) + "." + std::to_string(size%10) + " KiB";
+        return std::to_string(size/10) + "." + std::to_string(size%10) + " MiB";
     }
     else if(size >= 1073741824){
         double size2 = (double)size / 1073741824.0;
@@ -616,10 +639,12 @@ std::string stringOfSize(int size){
     return std::to_string(size) + " B";
 }
 
+//Initialize the graphics of each file
 void initializeFileNames(SDL_Renderer *renderer, AppData *data_ptr, std::string dirname){
     SDL_Surface *phrase_surf;
     SDL_Color color = { 0, 0, 0 };
 
+    //the directory name
     phrase_surf = TTF_RenderText_Solid(data_ptr->font, dirname.c_str(), color);
     data_ptr->phrase = SDL_CreateTextureFromSurface(renderer, phrase_surf);
     SDL_FreeSurface(phrase_surf);
@@ -639,12 +664,14 @@ void initializeFileNames(SDL_Renderer *renderer, AppData *data_ptr, std::string 
         data_ptr->file_list.at(i)->sizeTexture = SDL_CreateTextureFromSurface(renderer, phrase_surf);
         SDL_FreeSurface(phrase_surf);
 
+        //permissions of the files
         phrase_surf = TTF_RenderText_Solid(data_ptr->font, data_ptr->file_list.at(i)->permissions.c_str(),color);
         data_ptr->file_list.at(i)->permTexture = SDL_CreateTextureFromSurface(renderer, phrase_surf);
         SDL_FreeSurface(phrase_surf);
     }
 }
 
+//Get the permissions for each file
 std::string getPermissions(struct stat fileStat){
     std::string result = "";
     (fileStat.st_mode & S_IRUSR) ? result += 'r' : result += '-';
