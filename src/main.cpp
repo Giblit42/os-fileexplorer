@@ -67,7 +67,7 @@ void quit(AppData *data_ptr);
 void listDirectory(std::string dirname, AppData *data_ptr, SDL_Renderer *renderer);
 void recursiveListDirectory(std::string dirname, AppData *data_ptr, int indent, SDL_Renderer *renderer);
 std::string getFilePic(std::string ext);
-std::string stringOfSize(int size);
+std::string stringOfSize(uint64_t size);
 void initializeFileNames(SDL_Renderer *renderer, AppData *data_ptr, std::string dirname);
 std::string getPermissions(struct stat fileStat);
 
@@ -443,8 +443,7 @@ void listDirectory(std::string dirname , AppData *data_ptr, SDL_Renderer *render
       	    }
       	    else{ //if not a directory
                 temp->permissions = getPermissions(file_info); //get permissions for the file
-                int fileSize = file_info.st_size;
-                temp->fileSize = stringOfSize(fileSize); //format the size of the file
+                temp->fileSize = stringOfSize(file_info.st_size); //format the size of the file
 
                 //get the extension of the file
                 int index = -1;
@@ -555,8 +554,7 @@ void recursiveListDirectory(std::string dirname , AppData *data_ptr, int indent,
       	    }
       	    else{
                 temp->permissions = getPermissions(file_info); //get the permission for the file
-                int fileSize = file_info.st_size;
-                temp->fileSize = stringOfSize(fileSize);
+                temp->fileSize = stringOfSize(file_info.st_size);
 
                 //Get the extension for the file
                 int index = -1;
@@ -601,20 +599,20 @@ std::string getFilePic(std::string ext){
 }
 
 //Formats the inputted size of a file
-std::string stringOfSize(int size){
+std::string stringOfSize(uint64_t size){
     if(size >= 1024 && size < 1048576){
         double size2 = ((double)size / 1024.0)*10;
-        size = (int)size2;
+        size = (uint64_t)size2;
         return std::to_string(size/10) + "." + std::to_string(size%10) + " KiB";
     }
     else if(size >= 1048576 && size < 1073741824){
         double size2 = ((double)size / 1048576.0)*10;
-        size = (int)size2;
+        size = (uint64_t)size2;
         return std::to_string(size/10) + "." + std::to_string(size%10) + " MiB";
     }
     else if(size >= 1073741824){
-        double size2 = (double)size / 1073741824.0;
-        size2 = static_cast<double>(static_cast<int>(size2*10.0))/10.0;
+        double size2 = ((double)size / 1073741824)*10;
+        size = (uint64_t)size2;
         return std::to_string(size/10) + "." + std::to_string(size%10) + " GiB";
     }
     
