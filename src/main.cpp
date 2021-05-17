@@ -40,13 +40,7 @@ typedef struct AppData {
     std::string dirname;
     std::string dirFullPath;
     TTF_Font *font;
-    SDL_Texture *folder;
     SDL_Texture *phrase;
-    SDL_Texture *exe;
-    SDL_Texture *image;
-    SDL_Texture *video;
-    SDL_Texture *code;
-    SDL_Texture *other;
     SDL_Texture *up;
     SDL_Texture *down;
     SDL_Texture *recur;
@@ -54,23 +48,11 @@ typedef struct AppData {
     SDL_Texture *perm;
     SDL_Rect perm_rect;
     SDL_Rect size_rect;
-    SDL_Rect folder_rect;
     SDL_Rect phrase_rect;
     SDL_Rect up_rect;
     SDL_Rect down_rect;
-    SDL_Rect exe_rect;
-    SDL_Rect image_rect;
-    SDL_Rect video_rect;
-    SDL_Rect code_rect;
-    SDL_Rect other_rect;
     SDL_Rect recur_rect;
-    bool folder_selected;
     bool phrase_selected;
-    bool exe_selected;
-    bool image_selected;
-    bool video_selected;
-    bool code_selected;
-    bool other_selected;
     bool up_selected;
     bool down_selected;
     bool recur_selected;
@@ -379,17 +361,16 @@ void render(SDL_Renderer *renderer, AppData *data_ptr)
 
 void quit(AppData *data_ptr)
 {
-    SDL_DestroyTexture(data_ptr->folder);
     SDL_DestroyTexture(data_ptr->phrase);
-    SDL_DestroyTexture(data_ptr->exe);
-    SDL_DestroyTexture(data_ptr->image);
-    SDL_DestroyTexture(data_ptr->video);
-    SDL_DestroyTexture(data_ptr->code);
-    SDL_DestroyTexture(data_ptr->other);
     SDL_DestroyTexture(data_ptr->up);
     SDL_DestroyTexture(data_ptr->down);
     SDL_DestroyTexture(data_ptr->recur);
     TTF_CloseFont(data_ptr->font);
+    for(int i = 0; i < data_ptr->file_list.size(); i++){
+        SDL_DestroyTexture(data_ptr->file_list.at(i)->nameTexture);
+        SDL_DestroyTexture(data_ptr->file_list.at(i)->sizeTexture);
+        SDL_DestroyTexture(data_ptr->file_list.at(i)->picTexture);
+    }
 }
 
 void listDirectory(std::string dirname , AppData *data_ptr, SDL_Renderer *renderer)
@@ -573,10 +554,11 @@ void recursiveListDirectory(std::string dirname , AppData *data_ptr, int indent,
                 }
       	    }
       	    else{
-                temp->permissions = getPermissions(file_info);
+                temp->permissions = getPermissions(file_info); //get the permission for the file
                 int fileSize = file_info.st_size;
                 temp->fileSize = stringOfSize(fileSize);
 
+                //Get the extension for the file
                 int index = -1;
                 for(int j = 0; j < file_list[i].size(); j++){
                     if(file_list[i][j] == '.'){
