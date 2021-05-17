@@ -13,6 +13,10 @@
 #define WIDTH 800
 #define HEIGHT 600
 
+//Questions to ask in office hours:
+// - capital coming first with the sort
+// - after pressing .., directory name is ..
+
 typedef struct FileEntry{
     std::string fileName;
     std::string full_path;
@@ -27,6 +31,10 @@ typedef struct FileEntry{
     std::string filePic;
     SDL_Texture *picTexture;
     SDL_Rect picPos;
+
+    std::string permissions;
+    SDL_Texture *permTexture;
+    SDL_Rect permPos;
 
     bool selected;
 } FileEntry;
@@ -82,6 +90,7 @@ void recursiveListDirectory(std::string dirname, AppData *data_ptr, int indent, 
 std::string getFilePic(std::string ext);
 std::string stringOfSize(int size);
 void initializeFileNames(SDL_Renderer *renderer, AppData *data_ptr, std::string dirname);
+std::string getPermissions(struct stat fileStat);
 
 int main(int argc, char **argv)
 {
@@ -127,6 +136,7 @@ int main(int argc, char **argv)
                     	data.file_list.at(i)->namePos.y +=40;
                         data.file_list.at(i)->sizePos.y +=40;
                         data.file_list.at(i)->picPos.y +=40;
+                        data.file_list.at(i)->permPos.y += 40;
                     }
         		}
         		else if(event.button.button == SDL_BUTTON_LEFT &&
@@ -140,6 +150,7 @@ int main(int argc, char **argv)
                     	data.file_list.at(i)->namePos.y -=40;
                         data.file_list.at(i)->sizePos.y -=40;
                         data.file_list.at(i)->picPos.y -=40;
+                        data.file_list.at(i)->permPos.y -= 40;
                     }
         		}
                 else if(event.button.button == SDL_BUTTON_LEFT && 
@@ -147,7 +158,7 @@ int main(int argc, char **argv)
                 event.button.y <= 40 && event.button.y >= 0){
                     if(data.recur_selected){
                         data.file_list.clear();
-                        listDirectory(data.dirname,&data,renderer);
+                        listDirectory(data.dirFullPath,&data,renderer);
                         initializeFileNames(renderer,&data,data.dirname);
                         data.recur_selected = false;
                     }
@@ -157,7 +168,6 @@ int main(int argc, char **argv)
                         initializeFileNames(renderer,&data,data.dirname);
                         data.recur_selected = true;
                     }
-                    std::cout << " YOU PRESSED THE RECURSIVE BUTTON" << std::endl;
                 }
                 else if(event.button.y > 40){//If a file is selected
                     int y = event.button.y;
@@ -190,10 +200,6 @@ int main(int argc, char **argv)
                            }
 
                     }
-
-
-                    
-                    //char *env = getenv()
                 }
 
                 break;
@@ -329,8 +335,6 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     data_ptr->recur_selected = false;
     
     
-    
-    
     SDL_RenderCopy(renderer, data_ptr->phrase, NULL, &(data_ptr->phrase_rect));
 
     initializeFileNames(renderer,data_ptr, "HOME");
@@ -354,6 +358,9 @@ void render(SDL_Renderer *renderer, AppData *data_ptr)
 
         SDL_QueryTexture(data_ptr->file_list.at(i)->sizeTexture,NULL,NULL, &(data_ptr->file_list.at(i)->sizePos.w), &(data_ptr->file_list.at(i)->sizePos.h));
         SDL_RenderCopy(renderer, data_ptr->file_list.at(i)->sizeTexture, NULL, &(data_ptr->file_list.at(i)->sizePos));
+
+        SDL_QueryTexture(data_ptr->file_list.at(i)->permTexture,NULL,NULL, &(data_ptr->file_list.at(i)->permPos.w), &(data_ptr->file_list.at(i)->permPos.h));
+        SDL_RenderCopy(renderer, data_ptr->file_list.at(i)->permTexture, NULL, &(data_ptr->file_list.at(i)->permPos));
 
         SDL_RenderCopy(renderer, data_ptr->file_list.at(i)->picTexture, NULL, &(data_ptr->file_list.at(i)->picPos));
 
@@ -433,6 +440,7 @@ void listDirectory(std::string dirname , AppData *data_ptr, SDL_Renderer *render
                 fileName = fileName.substr(0,27);
                 fileName += "...";
             }
+            temp->permissions = getPermissions(file_info);
             temp->fileName = fileName;
             temp->full_path = full_path;
             temp->namePos.x = 60;
@@ -445,6 +453,9 @@ void listDirectory(std::string dirname , AppData *data_ptr, SDL_Renderer *render
             temp->picPos.y = 45 + (i*40);
             temp->picPos.h = 25;
             temp->picPos.w = 25;
+
+            temp->permPos.x = 600;
+            temp->permPos.y = 45 + (i*40);
 
             if(file_err){}
             else if(S_ISDIR(file_info.st_mode)){
@@ -527,6 +538,7 @@ void recursiveListDirectory(std::string dirname , AppData *data_ptr, int indent,
                 fileName = fileName.substr(0,27);
                 fileName += "...";
             }
+            temp->permissions = getPermissions(file_info);
             temp->fileName = fileName;
             temp->full_path = full_path;
             temp->namePos.x = 60;
@@ -539,6 +551,9 @@ void recursiveListDirectory(std::string dirname , AppData *data_ptr, int indent,
             temp->picPos.y = 45 + (data_ptr->file_list.size()*40);
             temp->picPos.h = 25;
             temp->picPos.w = 25;
+
+            temp->permPos.x = 600;
+            temp->permPos.y = 45 + (data_ptr->file_list.size()*40);
 
             if(file_err){}
             else if(S_ISDIR(file_info.st_mode)){
@@ -641,7 +656,26 @@ void initializeFileNames(SDL_Renderer *renderer, AppData *data_ptr, std::string 
         phrase_surf = TTF_RenderText_Solid(data_ptr->font, data_ptr->file_list.at(i)->fileSize.c_str(),color);
         data_ptr->file_list.at(i)->sizeTexture = SDL_CreateTextureFromSurface(renderer, phrase_surf);
         SDL_FreeSurface(phrase_surf);
+
+        phrase_surf = TTF_RenderText_Solid(data_ptr->font, data_ptr->file_list.at(i)->permissions.c_str(),color);
+        data_ptr->file_list.at(i)->permTexture = SDL_CreateTextureFromSurface(renderer, phrase_surf);
+        SDL_FreeSurface(phrase_surf);
     }
+}
+
+std::string getPermissions(struct stat fileStat){
+    std::string result = "";
+    (S_ISDIR(fileStat.st_mode)) ? result += 'd' : result += '-';
+    (fileStat.st_mode & S_IRUSR) ? result += 'r' : result += '-';
+    (fileStat.st_mode & S_IWUSR) ? result += 'w' : result += '-';
+    (fileStat.st_mode & S_IXUSR) ? result += 'x' : result += '-';
+    (fileStat.st_mode & S_IRGRP) ? result += 'r' : result += '-';
+    (fileStat.st_mode & S_IWGRP) ? result += 'w' : result += '-';
+    (fileStat.st_mode & S_IXGRP) ? result += 'x' : result += '-';
+    (fileStat.st_mode & S_IROTH) ? result += 'r' : result += '-';
+    (fileStat.st_mode & S_IWOTH) ? result += 'w' : result += '-';
+    (fileStat.st_mode & S_IXOTH) ? result += 'x' : result += '-';
+    return result;
 }
 
 
